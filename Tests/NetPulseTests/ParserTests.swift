@@ -1,5 +1,5 @@
 import XCTest
-@testable import WiFiDoctor
+@testable import NetPulse
 
 /// 解析器单元测试（样本取自 macOS 15.6 实机输出）
 final class ParserTests: XCTestCase {
@@ -134,20 +134,20 @@ final class ParserTests: XCTestCase {
     func testParseProfilerJSON() {
         let json = """
         {"SPAirPortDataType":[{"spairport_airport_interfaces":[{"_name":"en0","spairport_airport_other_local_wireless_networks":[
-          {"_name":"BUFALLO748","spairport_network_channel":"6 (2GHz, 20MHz)","spairport_network_phymode":"802.11b/g/n/ac/ax","spairport_security_mode":"spairport_security_mode_wpa2_personal"},
-          {"_name":"BUFALLO748_5G","spairport_network_channel":"48 (5GHz, 160MHz)","spairport_network_phymode":"802.11a/n/ac/ax","spairport_signal_noise":"-45 dBm / -92 dBm","spairport_security_mode":"spairport_security_mode_wpa2_personal"}
-        ],"spairport_current_network_information":{"_name":"BUFALLO748_5G","spairport_network_channel":"48 (5GHz, 160MHz)","spairport_network_country_code":"CN","spairport_network_mcs":6,"spairport_network_phymode":"802.11ax","spairport_security_mode":"spairport_security_mode_wpa2_personal"}}]}]}
+          {"_name":"Apartment-2G","spairport_network_channel":"6 (2GHz, 20MHz)","spairport_network_phymode":"802.11b/g/n/ac/ax","spairport_security_mode":"spairport_security_mode_wpa2_personal"},
+          {"_name":"HomeLab","spairport_network_channel":"48 (5GHz, 160MHz)","spairport_network_phymode":"802.11a/n/ac/ax","spairport_signal_noise":"-45 dBm / -92 dBm","spairport_security_mode":"spairport_security_mode_wpa2_personal"}
+        ],"spairport_current_network_information":{"_name":"HomeLab","spairport_network_channel":"48 (5GHz, 160MHz)","spairport_network_country_code":"CN","spairport_network_mcs":6,"spairport_network_phymode":"802.11ax","spairport_security_mode":"spairport_security_mode_wpa2_personal"}}]}]}
         """
         let result = WifiInfoCollector.parseProfilerJSON(json)!
-        XCTAssertEqual(result.current?.ssid, "BUFALLO748_5G")
+        XCTAssertEqual(result.current?.ssid, "HomeLab")
         XCTAssertEqual(result.current?.channel, 48)
         XCTAssertEqual(result.current?.widthMHz, 160)
         XCTAssertEqual(result.current?.mcs, 6)
         XCTAssertEqual(result.current?.country, "CN")
         XCTAssertEqual(result.current?.security, "WPA2 个人")
-        // 当前 AP（同 SSID 同信道）被过滤，只剩外部邻居 BUFALLO748
+        // 当前 AP（同 SSID 同信道）被过滤，只剩外部邻居 Apartment-2G
         XCTAssertEqual(result.neighbors.count, 1)
-        XCTAssertEqual(result.neighbors[0].ssid, "BUFALLO748")
+        XCTAssertEqual(result.neighbors[0].ssid, "Apartment-2G")
         XCTAssertEqual(result.neighbors[0].band, "2.4GHz")
     }
 
@@ -278,6 +278,36 @@ final class ParserTests: XCTestCase {
         let verdicts = Diagnoser.overviewVerdicts(wifi: wifi, pings: [gw], coChannel: 6,
                                                  dnsSystemMs: nil, publicIP: nil)
         XCTAssertTrue(verdicts.contains { $0.severity == .bad && $0.title.contains("WiFi 链路") })
+    }
+
+    func testDiagnoserGatewayIssueIsNotMisattributedToWiFi() {
+        var wifi = WifiLinkState()
+        wifi.connected = true
+        wifi.rssi = -50
+        wifi.noise = -95
+        var gw = PingTargetState(label: "网关", host: "192.168.2.1")
+        gw.sent = 20; gw.received = 10; gw.history = [42, 55]; gw.avg = 48
+        let verdicts = Diagnoser.overviewVerdicts(wifi: wifi, pings: [gw], coChannel: 0,
+                                                 dnsSystemMs: nil, publicIP: nil)
+        XCTAssertTrue(verdicts.contains { $0.severity == .bad && $0.title.contains("网关") })
+        XCTAssertFalse(verdicts.contains { $0.title.contains("WiFi 链路质量差") })
+    }
+
+    func testDiagnoserDoesNotTreatDNSPingAsInternetPath() {
+        var wifi = WifiLinkState()
+        wifi.connected = true
+        wifi.rssi = -50
+        wifi.noise = -95
+        var gw = PingTargetState(label: "网关", host: "192.168.2.1")
+        gw.sent = 10; gw.received = 10; gw.history = [3, 4, 3]; gw.avg = 3.3
+        var dns = PingTargetState(label: "DNS 1.1.1.1", host: "1.1.1.1")
+        dns.sent = 10; dns.received = 0
+        var publicTarget = PingTargetState(label: "Google", host: "8.8.8.8")
+        publicTarget.sent = 10; publicTarget.received = 10; publicTarget.history = [20, 21, 22]; publicTarget.avg = 21
+        let verdicts = Diagnoser.overviewVerdicts(wifi: wifi, pings: [gw, dns, publicTarget], coChannel: 0,
+                                                 dnsSystemMs: 18, publicIP: "203.0.113.42")
+        XCTAssertFalse(verdicts.contains { $0.title.contains("上游") })
+        XCTAssertTrue(verdicts.contains { $0.title == L10n.t("vd.inet.ok") })
     }
 
     func testDiagnoserURLTTFB() {
@@ -411,29 +441,29 @@ final class ParserTests: XCTestCase {
     // MARK: - 自身 AP 重复 bug（system_profiler 会把当前 AP 也列进邻居）
 
     func testParseProfilerFiltersSelfAP() {
-        // 场景：当前连 bufallo751 ch153/5G，邻居列表里也有同 AP 的 ch153
+        // 场景：当前连 HomeLab ch153/5G，邻居列表里也有同 AP 的 ch153
         // 以及同 SSID 的 2.4G 频段（双频合一）
         let json = """
         {"SPAirPortDataType":[{"spairport_airport_interfaces":[{"_name":"en0",
         "spairport_airport_other_local_wireless_networks":[
-          {"_name":"bufallo751","spairport_network_channel":"153 (5GHz, 80MHz)","spairport_network_phymode":"802.11ax","spairport_security_mode":"spairport_security_mode_wpa2_personal"},
-          {"_name":"bufallo751","spairport_network_channel":"11 (2GHz, 20MHz)","spairport_network_phymode":"802.11n","spairport_security_mode":"spairport_security_mode_wpa2_personal"},
-          {"_name":"BUFALLO748_5G","spairport_network_channel":"40 (5GHz, 160MHz)","spairport_network_phymode":"802.11ax","spairport_security_mode":"spairport_security_mode_wpa2_personal"}
-        ],"spairport_current_network_information":{"_name":"bufallo751","spairport_network_channel":"153 (5GHz, 80MHz)","spairport_network_country_code":"CN","spairport_network_mcs":6,"spairport_network_phymode":"802.11ax","spairport_security_mode":"spairport_security_mode_wpa2_personal"}}]}]}
+          {"_name":"HomeLab","spairport_network_channel":"153 (5GHz, 80MHz)","spairport_network_phymode":"802.11ax","spairport_security_mode":"spairport_security_mode_wpa2_personal"},
+          {"_name":"HomeLab","spairport_network_channel":"11 (2GHz, 20MHz)","spairport_network_phymode":"802.11n","spairport_security_mode":"spairport_security_mode_wpa2_personal"},
+          {"_name":"Apartment-5G","spairport_network_channel":"40 (5GHz, 160MHz)","spairport_network_phymode":"802.11ax","spairport_security_mode":"spairport_security_mode_wpa2_personal"}
+        ],"spairport_current_network_information":{"_name":"HomeLab","spairport_network_channel":"153 (5GHz, 80MHz)","spairport_network_country_code":"CN","spairport_network_mcs":6,"spairport_network_phymode":"802.11ax","spairport_security_mode":"spairport_security_mode_wpa2_personal"}}]}]}
         """
         let result = WifiInfoCollector.parseProfilerJSON(json)!
-        XCTAssertEqual(result.current?.ssid, "bufallo751")
+        XCTAssertEqual(result.current?.ssid, "HomeLab")
         XCTAssertEqual(result.current?.channel, 153)
 
         // 自身 AP（同 SSID 同信道同频段）必须被剔除：只剩 2 条邻居
         XCTAssertEqual(result.neighbors.count, 2, "自身 AP 不应出现在邻居列表")
-        XCTAssertFalse(result.neighbors.contains { $0.ssid == "bufallo751" && $0.channel == 153 })
+        XCTAssertFalse(result.neighbors.contains { $0.ssid == "HomeLab" && $0.channel == 153 })
         // 同 SSID 的 2.4G 频段保留并标记为自己的路由器
-        let own24 = result.neighbors.first { $0.ssid == "bufallo751" && $0.channel == 11 }
+        let own24 = result.neighbors.first { $0.ssid == "HomeLab" && $0.channel == 11 }
         XCTAssertNotNil(own24)
         XCTAssertEqual(own24?.isOwnRouter, true)
         // 外部网络不标记
-        XCTAssertEqual(result.neighbors.first { $0.ssid == "BUFALLO748_5G" }?.isOwnRouter, false)
+        XCTAssertEqual(result.neighbors.first { $0.ssid == "Apartment-5G" }?.isOwnRouter, false)
     }
 
     func testChannelPlanIgnoresOwnRouter() {

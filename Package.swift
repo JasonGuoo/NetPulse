@@ -2,17 +2,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "WiFiDoctor",
+    name: "NetPulse",
     platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(
-            name: "WiFiDoctor",
-            path: "Sources/WiFiDoctor"
+            name: "NetPulse",
+            path: "Sources/NetPulse",
+            resources: [.process("Resources")]
         ),
         .testTarget(
-            name: "WiFiDoctorTests",
-            dependencies: ["WiFiDoctor"],
-            path: "Tests/WiFiDoctorTests"
+            name: "NetPulseTests",
+            dependencies: ["NetPulse"],
+            path: "Tests/NetPulseTests"
         ),
     ]
 )

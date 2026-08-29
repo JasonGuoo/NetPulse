@@ -19,7 +19,7 @@ enum Shell {
             return nil
         }
 
-        final class Box {
+        final class Box: @unchecked Sendable {
             let lock = NSLock()
             var resumed = false
             var buf = Data()

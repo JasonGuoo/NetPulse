@@ -22,76 +22,85 @@ final class NetOverviewCollector {
     /// 单次网络概况采集（刷新按钮也调用）
     static func pollMain(model: AppModel) async {
         var gateway: String?
-            var iface: String?
+        var iface: String?
 
-            if let out = await Shell.run("/sbin/route", ["-n", "get", "default"], timeout: 5) {
-                gateway = regexCapture(#"gateway: (\S+)"#, from: out)?[0]
-                iface = regexCapture(#"interface: (\S+)"#, from: out)?[0]
-            }
+        if let out = await Shell.run("/sbin/route", ["-n", "get", "default"], timeout: 5) {
+            gateway = regexCapture(#"gateway: (\S+)"#, from: out)?[0]
+            iface = regexCapture(#"interface: (\S+)"#, from: out)?[0]
+        }
 
-            var dns: [String] = []
-            var dhcpDNS: [String] = []
-            if let out = await Shell.run("/usr/sbin/scutil", ["--dns"], timeout: 5) {
-                dns = Self.parsePrimaryNameservers(out)
-            }
-            if let ifName = iface ?? model.wifi.interface,
-               let out = await Shell.run("/usr/sbin/ipconfig", ["getoption", ifName, "domain_name_server"], timeout: 5) {
-                dhcpDNS = out.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-            }
-            // dnsSource 存原始值（manual/dhcp），显示层负责本地化
-            let dnsSource: String?
-            if dns.isEmpty {
-                dnsSource = nil
-            } else if Set(dns) == Set(dhcpDNS), !dhcpDNS.isEmpty {
-                dnsSource = "dhcp"
-            } else if !dhcpDNS.isEmpty {
-                dnsSource = "manual"
-            } else {
-                dnsSource = nil
-            }
+        var dns: [String] = []
+        var dhcpDNS: [String] = []
+        if let out = await Shell.run("/usr/sbin/scutil", ["--dns"], timeout: 5) {
+            dns = Self.parsePrimaryNameservers(out)
+        }
+        if let ifName = iface ?? model.wifi.interface,
+           let out = await Shell.run("/usr/sbin/ipconfig", ["getoption", ifName, "domain_name_server"], timeout: 5) {
+            dhcpDNS = out.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        }
 
-            var proxies: [ProxyEntry] = []
-            if let out = await Shell.run("/usr/sbin/scutil", ["--proxy"], timeout: 5) {
-                proxies = Self.parseProxy(out)
-            }
+        // dnsSource 存原始值（manual/dhcp），显示层负责本地化
+        let dnsSource: String?
+        if dns.isEmpty {
+            dnsSource = nil
+        } else if Set(dns) == Set(dhcpDNS), !dhcpDNS.isEmpty {
+            dnsSource = "dhcp"
+        } else if !dhcpDNS.isEmpty {
+            dnsSource = "manual"
+        } else {
+            dnsSource = nil
+        }
 
-            var vpn: [String] = []
-            if let out = await Shell.run("/usr/sbin/scutil", ["--nc", "list"], timeout: 5) {
-                vpn = Self.parseVPN(out)
-            }
-            let utuns = IfAddrs.interfaceNames(prefix: "utun")
-            if !utuns.isEmpty {
-                let label = L10n.tf("ip.tunnel.fmt", utuns.count, utuns.prefix(3).joined(separator: "、"))
-                if vpn.isEmpty { vpn = [label] } else { vpn.append("utun×\(utuns.count)") }
-            }
+        var proxies: [ProxyEntry] = []
+        if let out = await Shell.run("/usr/sbin/scutil", ["--proxy"], timeout: 5) {
+            proxies = Self.parseProxy(out)
+        }
 
-            var ipv4: String?
-            var mask: String?
-            var ipv6: String?
-            if let ifName = iface ?? model.wifi.interface {
-                let addr = IfAddrs.ipv4AndMask(of: ifName)
-                ipv4 = addr?.ip
-                mask = addr?.mask
-                ipv6 = IfAddrs.ipv6(of: ifName)
-            }
+        var vpn: [String] = []
+        if let out = await Shell.run("/usr/sbin/scutil", ["--nc", "list"], timeout: 5) {
+            vpn = Self.parseVPN(out)
+        }
+        let utuns = IfAddrs.interfaceNames(prefix: "utun")
+        if !utuns.isEmpty {
+            let label = L10n.tf("ip.tunnel.fmt", utuns.count, utuns.prefix(3).joined(separator: "、"))
+            if vpn.isEmpty { vpn = [label] } else { vpn.append("utun×\(utuns.count)") }
+        }
 
-            await MainActor.run {
-                var o = model.overview
-                o.gateway = gateway
-                o.dnsServers = dns
-                o.dnsSource = dnsSource
-                o.dhcpDNS = dhcpDNS
-                o.proxies = proxies
-                o.vpnActive = vpn
-                o.ipv4 = ipv4
-                o.mask = mask
-                o.ipv6 = ipv6
-                o.updated = Date()
-                model.overview = o
+        var ipv4: String?
+        var mask: String?
+        var ipv6: String?
+        if let ifName = iface ?? model.wifi.interface {
+            let addr = IfAddrs.ipv4AndMask(of: ifName)
+            ipv4 = addr?.ip
+            mask = addr?.mask
+            ipv6 = IfAddrs.ipv6(of: ifName)
+        }
 
-                // 网关 / 当前 DNS 变化时更新 ping 目标（保留未变化项的历史）
-                Self.syncPingTargets(model: model, gateway: gateway, dns: dns.first)
-            }
+        let resultGateway = gateway
+        let resultDNS = dns
+        let resultDHCPDNS = dhcpDNS
+        let resultProxies = proxies
+        let resultVPN = vpn
+        let resultIPv4 = ipv4
+        let resultMask = mask
+        let resultIPv6 = ipv6
+        await MainActor.run {
+            var o = model.overview
+            o.gateway = resultGateway
+            o.dnsServers = resultDNS
+            o.dnsSource = dnsSource
+            o.dhcpDNS = resultDHCPDNS
+            o.proxies = resultProxies
+            o.vpnActive = resultVPN
+            o.ipv4 = resultIPv4
+            o.mask = resultMask
+            o.ipv6 = resultIPv6
+            o.updated = Date()
+            model.overview = o
+
+            // 网关 / 当前 DNS 变化时更新 ping 目标（保留未变化项的历史）
+            Self.syncPingTargets(model: model, gateway: resultGateway, dns: resultDNS.first)
+        }
     }
 
     /// 同步 ping 目标：[0] 网关、[1] 当前生效 DNS、[2][3] 公共对照（与 DNS 重复则置空跳过）
@@ -160,13 +169,17 @@ final class NetOverviewCollector {
             }
 
             if let ip {
+                let resultLocation = loc
+                let resultOrg = org
+                let resultColo = colo
+                let resultWarp = warp
                 await MainActor.run {
                     var o = model.overview
                     o.publicIP = ip
-                    o.publicIPLocation = loc
-                    o.publicIPOrg = org
-                    o.colo = colo
-                    o.warp = warp
+                    o.publicIPLocation = resultLocation
+                    o.publicIPOrg = resultOrg
+                    o.colo = resultColo
+                    o.warp = resultWarp
                     o.publicIPUpdated = Date()
                     model.overview = o
                 }

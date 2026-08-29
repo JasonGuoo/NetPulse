@@ -14,6 +14,7 @@ final class AppModel: ObservableObject {
     @Published var totalRateIn: Double = 0
     @Published var totalRateOut: Double = 0
     @Published var rateHistory: [(in: Double, out: Double)] = []
+    @Published var processRateHistory: [String: [Double]] = [:]
 
     @Published var pingTargets: [PingTargetState] = [
         PingTargetState(label: "网关", host: ""),
@@ -40,38 +41,100 @@ final class AppModel: ObservableObject {
 
     /// 综合健康度 0-100
     var healthScore: Int {
-        var score = 100.0
-        if let rssi = wifi.rssi {
-            let q = Quality.rssi(rssi)
-            switch q {
-            case .good: score -= 0
-            case .fair: score -= 6
-            case .poor: score -= 18
-            case .bad: score -= 32
-            }
-        } else {
-            score -= 40
+        guard wifi.connected else { return 20 }
+        let weighted = Double(wifiHealthScore) * 0.24
+            + Double(gatewayHealthScore) * 0.22
+            + Double(dnsHealthScore) * 0.16
+            + Double(internetHealthScore) * 0.28
+            + Double(stabilityHealthScore) * 0.10
+        var score = Int(weighted.rounded())
+        let weakest = min(wifiHealthScore, gatewayHealthScore, dnsHealthScore, internetHealthScore)
+        // A visibly degraded path must be reflected in the headline score; averaging must not hide it.
+        if weakest < 85 { score = min(score, 84) }
+        if weakest < 50 { score = min(score, 69) }
+        return max(0, min(100, score))
+    }
+
+    var wifiHealthScore: Int {
+        guard wifi.connected, let rssi = wifi.rssi else { return 20 }
+        var score = 100
+        switch Quality.rssi(rssi) {
+        case .good: break
+        case .fair: score -= 8
+        case .poor: score -= 24
+        case .bad: score -= 45
         }
-        if !wifi.connected { score -= 30 }
-        for (i, p) in pingTargets.enumerated() {
-            let weight = i == 0 ? 0.5 : 0.25
-            score -= min(p.lossPct * 1.2, 20) * weight
-            if let avg = p.avg {
-                if avg > 100 { score -= 10 * weight }
-                else if avg > 40 { score -= 5 * weight }
-            }
-            if p.jitter > 15 { score -= 6 * weight }
+        if wifi.snr < 20 { score -= 22 }
+        else if wifi.snr < 30 { score -= 10 }
+        if coChannelNeighbors >= 4 { score -= 10 }
+        return max(0, min(100, score))
+    }
+
+    var gatewayHealthScore: Int { score(for: gatewayPing, warningMs: 30, badMs: 80) }
+    var dnsHealthScore: Int {
+        if let system = dnsResults.first(where: { $0.server.hasPrefix(L10n.t("dns.system")) }),
+           let ms = system.ms {
+            if ms > 400 { return 35 }
+            if ms > 200 { return 58 }
+            if ms > 80 { return 82 }
+            return 100
         }
-        if let dns = dnsResults.first(where: { $0.server == "系统" }), let ms = dns.ms, ms > 200 {
-            score -= 8
-        }
-        return max(0, min(100, Int(score.rounded())))
+        return score(for: dnsPing, warningMs: 80, badMs: 200)
+    }
+    var internetHealthScore: Int { score(for: internetPing, warningMs: 100, badMs: 250) }
+    var stabilityHealthScore: Int {
+        let targets = pingTargets.filter { !$0.host.isEmpty && $0.sent > 0 }
+        guard !targets.isEmpty else { return 88 }
+        let worstLoss = targets.map(\.lossPct).max() ?? 0
+        let worstJitter = targets.map(\.jitter).max() ?? 0
+        var score = 100
+        score -= Int(min(worstLoss * 5, 45))
+        score -= Int(min(worstJitter * 1.5, 35))
+        if tcpRetransPerMin > 10 { score -= 12 }
+        return max(0, min(100, score))
+    }
+
+    var gatewayPing: PingTargetState? {
+        pingTargets.first(where: { $0.label == L10n.t("pk.gateway") || $0.label == "网关" || $0.label.lowercased() == "gateway" })
+            ?? pingTargets.first
+    }
+
+    var dnsPing: PingTargetState? {
+        pingTargets.first(where: { $0.label.hasPrefix("DNS") || $0.label.localizedCaseInsensitiveContains("dns") })
+    }
+
+    var internetPing: PingTargetState? {
+        pingTargets.filter { !$0.host.isEmpty }.dropFirst(2).first(where: { $0.avg != nil })
+            ?? pingTargets.filter { !$0.host.isEmpty }.dropFirst().first(where: { $0.avg != nil })
     }
 
     /// 当前信道同频邻居数（排除自己的路由器）
     var coChannelNeighbors: Int {
         guard let ch = wifi.channel else { return 0 }
         return neighbors.filter { $0.channel == ch && !$0.isOwnRouter }.count
+    }
+
+    func recordProcessRates(_ processes: [ProcessTraffic]) {
+        let activeIDs = Set(processes.map(\.id))
+        for process in processes {
+            var history = processRateHistory[process.id] ?? []
+            history.append(process.rateIn + process.rateOut)
+            if history.count > 48 { history.removeFirst(history.count - 48) }
+            processRateHistory[process.id] = history
+        }
+        processRateHistory = processRateHistory.filter { activeIDs.contains($0.key) }
+    }
+
+    private func score(for target: PingTargetState?, warningMs: Double, badMs: Double) -> Int {
+        guard let target else { return 82 }
+        var score = 100
+        if let avg = target.avg {
+            if avg >= badMs { score -= 42 }
+            else if avg >= warningMs { score -= 18 }
+        }
+        score -= Int(min(target.lossPct * 6, 50))
+        score -= Int(min(target.jitter, 20))
+        return max(0, min(100, score))
     }
 
     // MARK: - 生命周期（Core 接入后启动采集循环）

@@ -34,7 +34,7 @@ final class L10n: ObservableObject {
 
     @Published var language: AppLanguage {
         didSet {
-            UserDefaults.standard.set(language.rawValue, forKey: "wfd.language")
+            UserDefaults.standard.set(language.rawValue, forKey: "netpulse.language")
             lock.lock()
             code = language == .system ? AppLanguage.resolve() : language.rawValue
             lock.unlock()
@@ -51,7 +51,7 @@ final class L10n: ObservableObject {
     }
 
     private init() {
-        let raw = UserDefaults.standard.string(forKey: "wfd.language") ?? AppLanguage.system.rawValue
+        let raw = UserDefaults.standard.string(forKey: "netpulse.language") ?? AppLanguage.system.rawValue
         let lang = AppLanguage(rawValue: raw) ?? .system
         code = lang == .system ? AppLanguage.resolve() : lang.rawValue
         language = lang   // init 中 didSet 不触发，code 已先行就绪
@@ -205,6 +205,8 @@ final class L10n: ObservableObject {
         "vd.wifi.off.tip": "打开 系统设置 → Wi-Fi 选择网络",
         "vd.wifi.bad": "WiFi 链路质量差",
         "vd.wifi.bad.fmt": "网关丢包 %@，平均延迟 %@，抖动 %@",
+        "vd.gateway.bad": "本地网关路径不稳定",
+        "vd.gateway.bad.tip": "先重试；若持续出现，检查路由器负载、网线/上联、VPN 或防火墙",
         "vd.wifi.bad.weak": "；信号 %@ dBm 偏弱",
         "vd.wifi.bad.crowd": "；当前信道有 %d 个同频网络，干扰明显",
         "vd.wifi.tip.move": "靠近路由器、避开遮挡，或考虑加装 AP/换信道",
@@ -267,6 +269,30 @@ final class L10n: ObservableObject {
         "sec.unknown.fmt": "安全模式 #%d",
 
         // ping 延迟卡片
+        "monitoring": "监测中",
+        "menu.running": "正在运行", "menu.network.status": "网络状态",
+        "menu.open": "打开 NetPulse", "menu.quit": "退出",
+        "health.explain": "点击查看评分构成", "health.breakdown": "健康度构成", "health.stability": "稳定性",
+        "ov.rootcause": "根因定位", "ov.run.diagnosis": "运行路径诊断", "ov.location": "位置",
+        "ov.hero.offline": "未连接到 Wi-Fi", "ov.hero.offline.detail": "请先连接无线网络，再开始链路诊断。",
+        "ov.hero.wifi": "Wi-Fi 链路质量异常", "ov.hero.wifi.detail": "问题发生在本机到路由器之间，优先检查信号和信道干扰。",
+        "ov.hero.gateway": "本地网关响应异常", "ov.hero.gateway.detail": "无线信号可用，但到路由器的延迟或丢包偏高。",
+        "ov.hero.dns": "DNS 解析质量需要关注", "ov.hero.dns.detail": "网络链路正常，但域名解析正在拖慢新网站打开速度。",
+        "ov.hero.internet": "本地网络正常，但 Internet 路径偏慢", "ov.hero.internet.detail": "Wi-Fi、网关和 DNS 正常，问题更可能位于运营商或上游网络。",
+        "ov.hero.good": "网络运行良好", "ov.hero.good.detail": "Wi-Fi、网关、DNS 与外网路径均处于健康范围。",
+        "cn.sort.live": "实时流量", "cn.sort.connections": "连接数", "cn.sort.total": "累计流量", "cn.sort.name": "名称",
+        "cn.activity.summary": "%d 个应用 · %d 条连接", "cn.listen.summary": "%d 个监听端口",
+        "cn.attention": "需要关注", "cn.attention.connections": "%@ 当前有 %d 条连接", "cn.live.rate": "实时速率",
+        "lk.hide.details": "收起频谱证据", "lk.view.details": "查看频谱证据", "lk.congestion": "信道拥挤度",
+        "lk.congestion.low": "低", "lk.congestion.medium": "中", "lk.congestion.high": "高",
+        "lk.overlap.summary": "%d 个邻居网络与当前频谱重叠",
+        "sp.ready": "准备测速", "sp.result.download": "Internet 下载", "sp.result.upload": "Internet 上传", "sp.result.latency": "空闲延迟",
+        "sp.phy.note": "Wi‑Fi Link Rate 是无线链路协商速率，并不等于实际 Internet 吞吐。",
+        "dg.dns.current": "当前系统 DNS", "dg.dns.public": "公共 DNS", "dg.dns.current.fastest": "当前 DNS 已经是本次对比中最快的，无需更换。",
+        "dg.dns.switch": "%@ 在本次测试中更快，可在重复验证后考虑更换。",
+        "lk.possible.interference": "可能存在频谱干扰", "lk.interference.detail": "%d 个附近 AP 与当前信道重叠，预计影响：%@。",
+        "lk.impact.low": "低", "lk.impact.medium": "中", "lk.impact.high": "高", "lk.keep.channel": "当前信道健康，建议保持不变。",
+        "dg.phase.slow": "偏慢",
         "pk.gateway": "网关", "pk.loss": "丢包", "pk.wait": "等待网关…",
     ]
 
@@ -393,6 +419,8 @@ final class L10n: ObservableObject {
         "vd.wifi.off.tip": "Open System Settings → Wi-Fi to pick a network",
         "vd.wifi.bad": "Poor WiFi link quality",
         "vd.wifi.bad.fmt": "Gateway loss %@, avg latency %@, jitter %@",
+        "vd.gateway.bad": "Local gateway path is unstable",
+        "vd.gateway.bad.tip": "Retry first; if it persists, check router load, cabling/uplink, VPN, or firewall",
         "vd.wifi.bad.weak": "; signal %@ dBm is weak",
         "vd.wifi.bad.crowd": "; %d co-channel networks, noticeable interference",
         "vd.wifi.tip.move": "Move closer to the router, avoid obstructions, or add an AP / change channel",
@@ -451,6 +479,30 @@ final class L10n: ObservableObject {
         "sec.wpa3.psk": "WPA3 Personal", "sec.wpa3.eap": "WPA3 Enterprise", "sec.dynwep": "Dynamic WEP",
         "sec.unknown.fmt": "Security #%d",
 
+        "monitoring": "Monitoring",
+        "menu.running": "is running", "menu.network.status": "Network Status",
+        "menu.open": "Open NetPulse", "menu.quit": "Quit",
+        "health.explain": "Click to see how this score is calculated", "health.breakdown": "Health Breakdown", "health.stability": "Stability",
+        "ov.rootcause": "Root Cause", "ov.run.diagnosis": "Run path diagnosis", "ov.location": "Location",
+        "ov.hero.offline": "Wi-Fi is not connected", "ov.hero.offline.detail": "Connect to a wireless network before starting link diagnosis.",
+        "ov.hero.wifi": "Wi-Fi link quality is degraded", "ov.hero.wifi.detail": "The issue is between this Mac and the router. Check signal and channel interference first.",
+        "ov.hero.gateway": "Local gateway response is abnormal", "ov.hero.gateway.detail": "The wireless signal is usable, but latency or loss to the router is elevated.",
+        "ov.hero.dns": "DNS resolution needs attention", "ov.hero.dns.detail": "The network path is healthy, but name resolution is delaying new website loads.",
+        "ov.hero.internet": "Local network is healthy, but the Internet path is slow", "ov.hero.internet.detail": "Wi-Fi, gateway, and DNS are healthy; the likely cause is the ISP or upstream path.",
+        "ov.hero.good": "Network is healthy", "ov.hero.good.detail": "Wi-Fi, gateway, DNS, and Internet path are all within a healthy range.",
+        "cn.sort.live": "Live Traffic", "cn.sort.connections": "Connections", "cn.sort.total": "Total Traffic", "cn.sort.name": "Name",
+        "cn.activity.summary": "%d apps · %d connections", "cn.listen.summary": "%d listening ports",
+        "cn.attention": "Attention", "cn.attention.connections": "%@ currently has %d connections", "cn.live.rate": "Live rate",
+        "lk.hide.details": "Hide spectrum evidence", "lk.view.details": "View spectrum evidence", "lk.congestion": "Channel congestion",
+        "lk.congestion.low": "Low", "lk.congestion.medium": "Medium", "lk.congestion.high": "High",
+        "lk.overlap.summary": "%d neighboring networks overlap the current spectrum",
+        "sp.ready": "Ready to test", "sp.result.download": "Internet Download", "sp.result.upload": "Internet Upload", "sp.result.latency": "Idle Latency",
+        "sp.phy.note": "Wi‑Fi Link Rate is the negotiated wireless speed and is not the same as real Internet throughput.",
+        "dg.dns.current": "Current system DNS", "dg.dns.public": "Public DNS", "dg.dns.current.fastest": "Your current DNS is already the fastest in this comparison. No change is needed.",
+        "dg.dns.switch": "%@ was faster in this run. Consider switching after confirming with repeated tests.",
+        "lk.possible.interference": "Possible interference", "lk.interference.detail": "%d nearby APs overlap the current channel. Estimated impact: %@.",
+        "lk.impact.low": "Low", "lk.impact.medium": "Medium", "lk.impact.high": "High", "lk.keep.channel": "The current channel is healthy. Keep it unchanged.",
+        "dg.phase.slow": "Slow",
         "pk.gateway": "Gateway", "pk.loss": "Loss", "pk.wait": "Waiting for gateway…",
     ]
 
@@ -577,6 +629,8 @@ final class L10n: ObservableObject {
         "vd.wifi.off.tip": "システム設定 → Wi-Fi でネットワークを選択",
         "vd.wifi.bad": "WiFi リンク品質が低い",
         "vd.wifi.bad.fmt": "ゲートウェイ ロス %@、平均遅延 %@、ジッター %@",
+        "vd.gateway.bad": "ローカルゲートウェイ経路が不安定です",
+        "vd.gateway.bad.tip": "再試行し、続く場合はルーター負荷、配線/アップリンク、VPN、ファイアウォールを確認",
         "vd.wifi.bad.weak": "；信号 %@ dBm は弱い",
         "vd.wifi.bad.crowd": "；同チャネルに %d 件、干渉が顕著",
         "vd.wifi.tip.move": "ルーターに近づく、障害物を避ける、AP 追加やチャネル変更を",
@@ -635,6 +689,30 @@ final class L10n: ObservableObject {
         "sec.wpa3.psk": "WPA3 パーソナル", "sec.wpa3.eap": "WPA3 エンタープライズ", "sec.dynwep": "ダイナミック WEP",
         "sec.unknown.fmt": "セキュリティ #%d",
 
+        "monitoring": "監視中",
+        "menu.running": "実行中", "menu.network.status": "ネットワーク状態",
+        "menu.open": "NetPulse を開く", "menu.quit": "終了",
+        "health.explain": "クリックしてスコア内訳を表示", "health.breakdown": "ヘルススコア内訳", "health.stability": "安定性",
+        "ov.rootcause": "原因の特定", "ov.run.diagnosis": "経路診断を実行", "ov.location": "場所",
+        "ov.hero.offline": "Wi-Fi に接続されていません", "ov.hero.offline.detail": "無線ネットワークに接続してから診断を開始してください。",
+        "ov.hero.wifi": "Wi-Fi リンク品質に問題があります", "ov.hero.wifi.detail": "Mac とルーター間の問題です。信号とチャネル干渉を確認してください。",
+        "ov.hero.gateway": "ローカルゲートウェイの応答が異常です", "ov.hero.gateway.detail": "無線信号は使用可能ですが、ルーターへの遅延またはロスが高めです。",
+        "ov.hero.dns": "DNS 解決に注意が必要です", "ov.hero.dns.detail": "経路は正常ですが、名前解決が新しいサイトの表示を遅らせています。",
+        "ov.hero.internet": "ローカルは正常ですが Internet 経路が低速です", "ov.hero.internet.detail": "Wi-Fi、ゲートウェイ、DNS は正常です。ISP または上流経路が原因の可能性があります。",
+        "ov.hero.good": "ネットワークは正常です", "ov.hero.good.detail": "Wi-Fi、ゲートウェイ、DNS、Internet 経路はすべて正常範囲です。",
+        "cn.sort.live": "リアルタイム通信量", "cn.sort.connections": "接続数", "cn.sort.total": "累計通信量", "cn.sort.name": "名前",
+        "cn.activity.summary": "%d アプリ · %d 接続", "cn.listen.summary": "%d 待受ポート",
+        "cn.attention": "要確認", "cn.attention.connections": "%@ は現在 %d 接続あります", "cn.live.rate": "現在の速度",
+        "lk.hide.details": "周波数の証拠を閉じる", "lk.view.details": "周波数の証拠を表示", "lk.congestion": "チャネル混雑度",
+        "lk.congestion.low": "低", "lk.congestion.medium": "中", "lk.congestion.high": "高",
+        "lk.overlap.summary": "%d 件の周辺ネットワークが現在の帯域と重複",
+        "sp.ready": "テスト準備完了", "sp.result.download": "Internet ダウンロード", "sp.result.upload": "Internet アップロード", "sp.result.latency": "アイドル遅延",
+        "sp.phy.note": "Wi‑Fi Link Rate は無線リンクの交渉速度で、実際の Internet スループットとは異なります。",
+        "dg.dns.current": "現在のシステム DNS", "dg.dns.public": "パブリック DNS", "dg.dns.current.fastest": "現在の DNS が今回の比較で最速です。変更は不要です。",
+        "dg.dns.switch": "今回 %@ が高速でした。再テストで確認後に変更を検討してください。",
+        "lk.possible.interference": "干渉の可能性", "lk.interference.detail": "%d 件の近隣 AP が現在のチャネルと重複。推定影響：%@。",
+        "lk.impact.low": "低", "lk.impact.medium": "中", "lk.impact.high": "高", "lk.keep.channel": "現在のチャネルは正常です。そのまま使用してください。",
+        "dg.phase.slow": "遅い",
         "pk.gateway": "ゲートウェイ", "pk.loss": "ロス", "pk.wait": "ゲートウェイ待ち…",
     ]
 
@@ -761,6 +839,8 @@ final class L10n: ObservableObject {
         "vd.wifi.off.tip": "시스템 설정 → Wi-Fi에서 네트워크 선택",
         "vd.wifi.bad": "WiFi 링크 품질 낮음",
         "vd.wifi.bad.fmt": "게이트웨이 손실 %@, 평균 지연 %@, 지터 %@",
+        "vd.gateway.bad": "로컬 게이트웨이 경로가 불안정함",
+        "vd.gateway.bad.tip": "먼저 다시 시도하고, 계속되면 공유기 부하, 케이블/업링크, VPN 또는 방화벽을 확인하세요",
         "vd.wifi.bad.weak": "; 신호 %@ dBm 약함",
         "vd.wifi.bad.crowd": "; 같은 채널 %d개, 간섭 뚜렷",
         "vd.wifi.tip.move": "공유기에 가까이, 장애물 회피, AP 추가 또는 채널 변경",
@@ -819,6 +899,30 @@ final class L10n: ObservableObject {
         "sec.wpa3.psk": "WPA3 개인", "sec.wpa3.eap": "WPA3 기업", "sec.dynwep": "동적 WEP",
         "sec.unknown.fmt": "보안 #%d",
 
+        "monitoring": "모니터링 중",
+        "menu.running": "실행 중", "menu.network.status": "네트워크 상태",
+        "menu.open": "NetPulse 열기", "menu.quit": "종료",
+        "health.explain": "클릭하여 점수 구성을 확인", "health.breakdown": "상태 점수 구성", "health.stability": "안정성",
+        "ov.rootcause": "원인 분석", "ov.run.diagnosis": "경로 진단 실행", "ov.location": "위치",
+        "ov.hero.offline": "Wi-Fi가 연결되지 않았습니다", "ov.hero.offline.detail": "무선 네트워크에 연결한 후 링크 진단을 시작하세요.",
+        "ov.hero.wifi": "Wi-Fi 링크 품질이 저하되었습니다", "ov.hero.wifi.detail": "Mac과 공유기 사이의 문제입니다. 신호와 채널 간섭을 먼저 확인하세요.",
+        "ov.hero.gateway": "로컬 게이트웨이 응답이 비정상입니다", "ov.hero.gateway.detail": "무선 신호는 사용 가능하지만 공유기까지 지연 또는 손실이 높습니다.",
+        "ov.hero.dns": "DNS 해석에 주의가 필요합니다", "ov.hero.dns.detail": "네트워크 경로는 정상이나 이름 해석이 새 웹사이트 로딩을 늦추고 있습니다.",
+        "ov.hero.internet": "로컬 네트워크는 정상이나 Internet 경로가 느립니다", "ov.hero.internet.detail": "Wi-Fi, 게이트웨이, DNS는 정상이며 ISP 또는 상위 경로가 원인일 가능성이 큽니다.",
+        "ov.hero.good": "네트워크가 정상입니다", "ov.hero.good.detail": "Wi-Fi, 게이트웨이, DNS 및 Internet 경로가 모두 정상 범위입니다.",
+        "cn.sort.live": "실시간 트래픽", "cn.sort.connections": "연결 수", "cn.sort.total": "누적 트래픽", "cn.sort.name": "이름",
+        "cn.activity.summary": "앱 %d개 · 연결 %d건", "cn.listen.summary": "수신 대기 포트 %d개",
+        "cn.attention": "주의 필요", "cn.attention.connections": "%@에 현재 연결 %d건이 있습니다", "cn.live.rate": "실시간 속도",
+        "lk.hide.details": "스펙트럼 근거 닫기", "lk.view.details": "스펙트럼 근거 보기", "lk.congestion": "채널 혼잡도",
+        "lk.congestion.low": "낮음", "lk.congestion.medium": "보통", "lk.congestion.high": "높음",
+        "lk.overlap.summary": "주변 네트워크 %d개가 현재 스펙트럼과 겹칩니다",
+        "sp.ready": "측정 준비 완료", "sp.result.download": "Internet 다운로드", "sp.result.upload": "Internet 업로드", "sp.result.latency": "유휴 지연",
+        "sp.phy.note": "Wi‑Fi Link Rate는 무선 링크 협상 속도이며 실제 Internet 처리량과 같지 않습니다.",
+        "dg.dns.current": "현재 시스템 DNS", "dg.dns.public": "공용 DNS", "dg.dns.current.fastest": "현재 DNS가 이번 비교에서 가장 빠릅니다. 변경할 필요가 없습니다.",
+        "dg.dns.switch": "이번 테스트에서는 %@가 더 빨랐습니다. 반복 확인 후 변경을 고려하세요.",
+        "lk.possible.interference": "간섭 가능성", "lk.interference.detail": "주변 AP %d개가 현재 채널과 겹칩니다. 예상 영향: %@.",
+        "lk.impact.low": "낮음", "lk.impact.medium": "보통", "lk.impact.high": "높음", "lk.keep.channel": "현재 채널이 정상입니다. 그대로 유지하세요.",
+        "dg.phase.slow": "느림",
         "pk.gateway": "게이트웨이", "pk.loss": "손실", "pk.wait": "게이트웨이 대기 중…",
     ]
 }

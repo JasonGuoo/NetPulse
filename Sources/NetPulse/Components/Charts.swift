@@ -28,15 +28,17 @@ struct HealthRing: View {
                 .stroke(Theme.accentAngular,
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .shadow(color: scoreColor.opacity(0.7), radius: 6)
+                .shadow(color: scoreColor.opacity(0.28), radius: 3)
             VStack(spacing: 0) {
                 Text("\(score)")
                     .font(Theme.rounded(size / 3.1, .bold))
                     .monospacedDigit()
                     .foregroundColor(Theme.textPrimary)
-                Text("健康度")
-                    .font(.system(size: size / 7.2))
-                    .foregroundColor(Theme.textFaint)
+                if size >= 52 {
+                    Text(L10n.t("health"))
+                        .font(.system(size: size / 7.2))
+                        .foregroundColor(Theme.textFaint)
+                }
             }
         }
         .frame(width: size, height: size)
@@ -98,8 +100,6 @@ struct Sparkline: View {
             let last = point(values.count - 1)
             ctx.fill(Path(ellipseIn: CGRect(x: last.x - 2.4, y: last.y - 2.4, width: 4.8, height: 4.8)),
                      with: .color(color))
-            ctx.fill(Path(ellipseIn: CGRect(x: last.x - 6, y: last.y - 6, width: 12, height: 12)),
-                     with: .color(color.opacity(0.22)))
         }
     }
 }
@@ -123,7 +123,6 @@ struct SegmentBar: View {
                         RoundedRectangle(cornerRadius: 4)
                             .fill(phaseColors[min(phase.colorIndex, 4)].opacity(0.85))
                             .frame(width: w)
-                            .shadow(color: phaseColors[min(phase.colorIndex, 4)].opacity(0.5), radius: 3)
                     }
                 }
             }
@@ -342,12 +341,12 @@ struct SpeedGauge: View {
                 .stroke(Theme.accentAngular,
                         style: StrokeStyle(lineWidth: 10, lineCap: .round))
                 .rotationEffect(.degrees(135))
-                .shadow(color: Theme.cyan.opacity(0.55), radius: 7)
+                .shadow(color: Theme.cyan.opacity(0.22), radius: 4)
             VStack(spacing: 3) {
-                Text(Fmt.mbps(mbps))
-                    .font(Theme.mono(26, .bold))
-                    .foregroundColor(mbps > 0 ? Theme.cyan : Theme.textFaint)
-                Text(reference > 0 ? L10n.tf("sp.negotiated", Fmt.mbps(reference)) : untestedText)
+                Text(mbps > 0 ? Fmt.mbps(mbps) : untestedText)
+                    .font(Theme.mono(mbps > 0 ? 26 : 19, .semibold))
+                    .foregroundColor(mbps > 0 ? Theme.cyan : Theme.textPrimary)
+                Text(reference > 0 ? L10n.tf("sp.negotiated", Fmt.mbps(reference)) : "")
                     .font(Theme.mono(9.5))
                     .foregroundColor(Theme.textSecondary)
             }

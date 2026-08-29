@@ -1,9 +1,11 @@
 import SwiftUI
 import AppKit
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var window: NSWindow?
     let model = AppModel()
+    private var statusItem: NSStatusItem?
+    private var statusTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 开发用：无头渲染主窗口为 PNG（不依赖屏幕录制权限）；可带 Tab 名：概况/连接/链路/速率/诊断
@@ -11,7 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
            CommandLine.arguments.count > idx + 1 {
             let path = CommandLine.arguments[idx + 1]
             let tabName = CommandLine.arguments.count > idx + 2 ? CommandLine.arguments[idx + 2] : "概况"
-            let tab = ContentView.Tab.allCases.first { $0.rawValue == tabName } ?? .overview
+            let tab = ContentView.Tab.allCases.first { $0.rawValue == tabName || $0.title == tabName } ?? .overview
             Self.renderSelftestPNG(to: path, tab: tab)
             exit(0)
         }
@@ -33,22 +35,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         installAppIcon()
+        installStatusItem()
 
         let contentView = ContentView().environmentObject(model)
         let w = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1080, height: 720),
+            contentRect: NSRect(x: 0, y: 0, width: 1180, height: 760),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
-        w.title = "WiFi Doctor"
+        w.title = "NetPulse"
         w.titlebarAppearsTransparent = true
         w.titleVisibility = .hidden
         w.backgroundColor = NSColor(Theme.bgTop)
         w.isOpaque = false
         w.hasShadow = true
         w.center()
-        w.minSize = NSSize(width: 1020, height: 660)
+        w.minSize = NSSize(width: 1060, height: 700)
         w.contentView = NSHostingView(rootView: contentView)
         w.makeKeyAndOrderFront(nil)
         window = w
@@ -59,20 +62,125 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+        false
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { openMainWindow() }
+        return true
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        statusTimer?.invalidate()
         model.stop()
     }
 
-    // MARK: - 程序化 App 图标（霓虹 WiFi）
+    // MARK: - Menu bar
+
+    private func installStatusItem() {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.button?.image = NSImage(systemSymbolName: "waveform.path.ecg", accessibilityDescription: "NetPulse")
+        item.button?.imagePosition = .imageLeading
+        item.menu = NSMenu()
+        item.menu?.delegate = self
+        statusItem = item
+        refreshStatusMenu()
+        statusTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            self?.refreshStatusMenu()
+        }
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        refreshStatusMenu()
+    }
+
+    private func refreshStatusMenu() {
+        guard let statusItem, let menu = statusItem.menu else { return }
+        let signal = model.wifi.rssi.map { "\($0) dBm" } ?? "—"
+        statusItem.button?.title = "  \(signal)"
+        statusItem.button?.contentTintColor = model.wifi.connected ? NSColor(Theme.green) : NSColor.secondaryLabelColor
+
+        menu.removeAllItems()
+        let running = NSMenuItem(title: "NetPulse \(L10n.t("menu.running"))", action: nil, keyEquivalent: "")
+        running.image = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: nil)
+        running.isEnabled = false
+        menu.addItem(running)
+        menu.addItem(.separator())
+        addMetricItem(menu, symbol: "wifi", title: L10n.t("tile.signal"), value: signal)
+        addMetricItem(menu, symbol: "arrow.left.and.right", title: L10n.t("tile.txrate"), value: model.wifi.txRate.map { Fmt.mbps($0) } ?? "—")
+        addMetricItem(menu, symbol: "clock", title: L10n.t("ov.gateway"), value: model.gatewayPing?.last.map(Fmt.ms) ?? "—")
+        addMetricItem(menu, symbol: "network", title: "DNS", value: model.dnsPing?.last.map(Fmt.ms) ?? "—")
+        addMetricItem(menu, symbol: "checkmark.shield", title: L10n.t("menu.network.status"), value: QualityForScore.label(model.healthScore))
+        menu.addItem(.separator())
+
+        let open = NSMenuItem(title: L10n.t("menu.open"), action: #selector(openMainWindow), keyEquivalent: "")
+        open.target = self
+        open.image = NSImage(systemSymbolName: "macwindow", accessibilityDescription: nil)
+        menu.addItem(open)
+        let refresh = NSMenuItem(title: L10n.t("refresh"), action: #selector(refreshNow), keyEquivalent: "r")
+        refresh.target = self
+        refresh.image = NSImage(systemSymbolName: "arrow.triangle.2.circlepath", accessibilityDescription: nil)
+        menu.addItem(refresh)
+        let quit = NSMenuItem(title: L10n.t("menu.quit"), action: #selector(quitApp), keyEquivalent: "q")
+        quit.target = self
+        quit.image = NSImage(systemSymbolName: "rectangle.portrait.and.arrow.right", accessibilityDescription: nil)
+        menu.addItem(quit)
+    }
+
+    private func addMetricItem(_ menu: NSMenu, symbol: String, title: String, value: String) {
+        let item = NSMenuItem(title: "\(title)    \(value)", action: nil, keyEquivalent: "")
+        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+        item.isEnabled = false
+        menu.addItem(item)
+    }
+
+    @objc private func openMainWindow() {
+        window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func refreshNow() {
+        Task { await model.coordinator?.refreshAll() }
+    }
+
+    @objc private func quitApp() {
+        NSApp.terminate(nil)
+    }
+
+    // MARK: - App icon
 
     private func installAppIcon() {
         NSApplication.shared.applicationIconImage = Self.renderIcon(size: 512)
     }
 
+    private static func sourceIcon() -> NSImage? {
+        if let url = Bundle.main.url(forResource: "NetPulseIcon", withExtension: "png"),
+           let image = NSImage(contentsOf: url) {
+            return image
+        }
+        if let url = Bundle.module.url(forResource: "NetPulseIcon", withExtension: "png"),
+           let image = NSImage(contentsOf: url) {
+            return image
+        }
+        return nil
+    }
+
     static func renderIcon(size: CGFloat) -> NSImage {
+        if let source = sourceIcon() {
+            let image = NSImage(size: NSSize(width: size, height: size))
+            image.lockFocus()
+            NSGraphicsContext.current?.imageInterpolation = .high
+            source.draw(
+                in: NSRect(x: 0, y: 0, width: size, height: size),
+                from: NSRect(origin: .zero, size: source.size),
+                operation: .copy,
+                fraction: 1
+            )
+            image.unlockFocus()
+            return image
+        }
+
+        // 资源缺失时使用程序化图标，保证开发构建仍能启动。
         let s = size / 512.0   // 归一化：绘制逻辑按 512 设计
         let image = NSImage(size: NSSize(width: size, height: size))
         image.lockFocus()
@@ -185,18 +293,72 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.neighbors = Self.demoNeighbors
         model.processTraffic = Self.demoProcesses
         model.connections = Self.demoConnections
-        model.rateHistory = (0..<40).map { _ in (in: Double.random(in: 20_000...800_000), out: Double.random(in: 1_000...60_000)) }
+        model.rateHistory = (0..<40).map { index in
+            let wave = 0.55 + 0.32 * sin(Double(index) * 0.72) + 0.12 * cos(Double(index) * 1.51)
+            return (in: max(25_000, 780_000 * wave), out: max(3_000, 58_000 * (0.72 + 0.24 * cos(Double(index) * 0.83))))
+        }
         model.totalRateIn = Self.demoProcesses.map(\.rateIn).reduce(0, +)
         model.totalRateOut = Self.demoProcesses.map(\.rateOut).reduce(0, +)
-        model.wifi.rssiHistory = (0..<40).map { _ in -49 - Double.random(in: 0...5) }
+        model.wifi.rssiHistory = (0..<40).map { -51.5 + 1.7 * sin(Double($0) * 0.58) }
         model.wifi.snrHistory = model.wifi.rssiHistory.map { $0 + 92 }
-        model.wifi.txRateHistory = (0..<40).map { _ in Double.random(in: 1200...1450) }
-        model.verdicts = [
-            Verdict(severity: .good, title: "WiFi 链路正常", detail: "信号 -51 dBm，信噪比 41 dB，网关丢包 0.0%"),
-            Verdict(severity: .warn, title: "系统 DNS 解析偏慢（226 ms）", detail: "DNS 慢会直接拖累每次打开新网站", suggestion: "改用 1.1.1.1 / 223.5.5.5"),
+        model.wifi.txRateHistory = (0..<40).map { 1330 + 78 * sin(Double($0) * 0.42) }
+        for (processIndex, process) in Self.demoProcesses.enumerated() {
+            model.processRateHistory[process.id] = (0..<36).map { sample in
+                let factor = 0.62 + 0.25 * sin(Double(sample) * (0.44 + Double(processIndex) * 0.08))
+                return max(0, (process.rateIn + process.rateOut) * factor)
+            }
+        }
+        model.dnsResults = [
+            DnsResult(server: L10n.t("dns.system"), ms: 19),
+            DnsResult(server: "1.1.1.1", ms: 24),
+            DnsResult(server: "8.8.8.8", ms: 26),
         ]
+        model.verdicts = [
+            Verdict(
+                severity: .good,
+                title: L10n.t("vd.wifi.ok"),
+                detail: L10n.tf("vd.wifi.ok.detail", "-51 dBm", 41, "0.0%")
+            ),
+            Verdict(
+                severity: .warn,
+                title: L10n.t("vd.isp"),
+                detail: L10n.tf("vd.isp.detail", "Google", "0.0%", "196.6 ms"),
+                suggestion: L10n.t("vd.isp.tip")
+            ),
+        ]
+        if ProcessInfo.processInfo.environment["NETPULSE_EMPTY_STATE"] != "1" {
+            model.lastSpeed = SpeedResult(
+                downloadMbps: 423.6,
+                uploadMbps: 0,
+                bytes: 52_428_800,
+                seconds: 1.0,
+                measuredAt: Date(),
+                errorNote: nil
+            )
+            model.lastTiming = HttpTimingResult(
+                url: "https://www.apple.com",
+                phases: [
+                    HttpPhase(name: L10n.t("phase.dns"), seconds: 0.025, colorIndex: 0),
+                    HttpPhase(name: L10n.t("phase.tcp"), seconds: 0.010, colorIndex: 1),
+                    HttpPhase(name: L10n.t("phase.tls"), seconds: 0.148, colorIndex: 2),
+                    HttpPhase(name: L10n.t("phase.ttfb"), seconds: 0.018, colorIndex: 3),
+                    HttpPhase(name: L10n.t("phase.download"), seconds: 0.0068, colorIndex: 4),
+                ],
+                total: 0.2078,
+                httpStatus: 200,
+                bytes: 186_240,
+                verdicts: [
+                    Verdict(
+                        severity: .warn,
+                        title: L10n.tf("vd.bn.tls", "148 ms"),
+                        detail: L10n.t("vd.bn.tls.detail"),
+                        suggestion: L10n.t("vd.bn.tls.tip")
+                    )
+                ]
+            )
+        }
         let host = NSHostingView(rootView: ContentView(initialTab: tab).environmentObject(model))
-        host.setFrameSize(NSSize(width: 1080, height: 720))
+        host.setFrameSize(NSSize(width: 1180, height: 760))
         host.layoutSubtreeIfNeeded()
         guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
         host.cacheDisplay(in: host.bounds, to: rep)
@@ -205,7 +367,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     static let demoPings: [PingTargetState] = {
-        var gw = PingTargetState(label: "网关", host: "192.168.2.1")
+        var gw = PingTargetState(label: "网关", host: "192.168.50.1")
         gw.history = [3.9, 4.2, 4.0, 4.4, 4.1, 4.3, 4.0, 4.2]
         gw.sent = 30; gw.received = 30; gw.last = 4.2; gw.avg = 4.15
         var dns = PingTargetState(label: "DNS 1.1.1.1", host: "1.1.1.1")
@@ -213,20 +375,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         dns.sent = 30; dns.received = 29; dns.last = 12; dns.avg = 11.6
         var google = PingTargetState(label: "Google", host: "8.8.8.8")
         google.history = [190, 210, 195, 188, 205, 192, 199, 194]
-        google.sent = 30; google.received = 28; google.last = 194; google.avg = 196.6
+        google.sent = 30; google.received = 30; google.last = 194; google.avg = 196.6
         return [gw, dns, PingTargetState(label: "Cloudflare", host: ""), google]
     }()
 
     static let demoNeighbors: [NeighborNetwork] = [
-        NeighborNetwork(ssid: "BUFALLO748", channel: 6, band: "2.4GHz", widthMHz: 20, rssi: -70, security: "WPA2 个人", phyMode: "802.11n"),
-        NeighborNetwork(ssid: "lyly", channel: 6, band: "2.4GHz", widthMHz: 20, rssi: -78, security: "WPA2 个人", phyMode: "802.11n"),
-        NeighborNetwork(ssid: "niuniu", channel: 1, band: "2.4GHz", widthMHz: 40, rssi: -80, security: "WPA2 个人", phyMode: "802.11n"),
-        NeighborNetwork(ssid: "bufallo751", channel: 157, band: "5GHz", widthMHz: 80, rssi: -58, security: "WPA2 个人", phyMode: "802.11ax", isOwnRouter: true),
-        NeighborNetwork(ssid: "bufallo751", channel: 44, band: "5GHz", widthMHz: 80, rssi: -62, security: "WPA2 个人", phyMode: "802.11ax"),
+        NeighborNetwork(ssid: "Apartment-2G", channel: 6, band: "2.4GHz", widthMHz: 20, rssi: -70, security: "WPA2 个人", phyMode: "802.11n"),
+        NeighborNetwork(ssid: "Guest-WiFi", channel: 6, band: "2.4GHz", widthMHz: 20, rssi: -78, security: "WPA2 个人", phyMode: "802.11n"),
+        NeighborNetwork(ssid: "Coffee-Shop", channel: 1, band: "2.4GHz", widthMHz: 40, rssi: -80, security: "WPA2 个人", phyMode: "802.11n"),
+        NeighborNetwork(ssid: "HomeLab", channel: 157, band: "5GHz", widthMHz: 80, rssi: -58, security: "WPA2 个人", phyMode: "802.11ax", isOwnRouter: true),
+        NeighborNetwork(ssid: "Office-5G", channel: 44, band: "5GHz", widthMHz: 80, rssi: -62, security: "WPA2 个人", phyMode: "802.11ax"),
     ]
 
     static let demoProcesses: [ProcessTraffic] = [
-        ProcessTraffic(name: "Google Chrome Helper", pid: 71157, rateIn: 620_000, rateOut: 42_000, totalIn: 1_836_669_169, totalOut: 1_908_214, connections: 12),
+        ProcessTraffic(name: "Google Chrome Helper", pid: 71157, rateIn: 620_000, rateOut: 42_000, totalIn: 1_836_669_169, totalOut: 1_908_214, connections: 43),
         ProcessTraffic(name: "WeChat", pid: 88471, rateIn: 96_000, rateOut: 31_000, totalIn: 2_303_543, totalOut: 2_245_321, connections: 8),
         ProcessTraffic(name: "cloudflared", pid: 416, rateIn: 41_000, rateOut: 63_000, totalIn: 5_102_563, totalOut: 16_321_298, connections: 5),
         ProcessTraffic(name: "GitHub Desktop", pid: 26482, rateIn: 12_000, rateOut: 3_100, totalIn: 4_095, totalOut: 3_070, connections: 3),
@@ -234,16 +396,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     static let demoConnections: [ConnectionRow] = [
         ConnectionRow(process: "Google Chrome Helper", pid: 71157, proto: "TCP", family: "IPv4",
-                      local: "192.168.2.106:64017", remote: "162.159.61.3:443", state: "ESTABLISHED",
+                      local: "192.168.50.42:64017", remote: "162.159.61.3:443", state: "ESTABLISHED",
                       bytesIn: 812_345, bytesOut: 42_000, rateIn: 310_000, rateOut: 12_000),
         ConnectionRow(process: "Google Chrome Helper", pid: 71157, proto: "TCP", family: "IPv4",
-                      local: "192.168.2.106:58112", remote: "17.253.144.10:443", state: "ESTABLISHED",
+                      local: "192.168.50.42:58112", remote: "17.253.144.10:443", state: "ESTABLISHED",
                       bytesIn: 120_000, bytesOut: 9_000, rateIn: 64_000, rateOut: 2_100),
         ConnectionRow(process: "WeChat", pid: 88471, proto: "TCP", family: "IPv4",
-                      local: "192.168.2.106:52301", remote: "43.138.12.66:443", state: "ESTABLISHED",
+                      local: "192.168.50.42:52301", remote: "43.138.12.66:443", state: "ESTABLISHED",
                       bytesIn: 96_000, bytesOut: 31_000, rateIn: 96_000, rateOut: 31_000),
         ConnectionRow(process: "cloudflared", pid: 416, proto: "TCP", family: "IPv4",
-                      local: "192.168.2.106:51988", remote: "198.41.200.13:7844", state: "ESTABLISHED",
+                      local: "192.168.50.42:51988", remote: "198.41.200.13:7844", state: "ESTABLISHED",
                       bytesIn: 41_000, bytesOut: 63_000, rateIn: 41_000, rateOut: 63_000),
     ]
 
@@ -316,7 +478,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
-        if let s = model.lastSpeed.measuredAt {
+        if model.lastSpeed.measuredAt != nil {
             lines.append("=== 测速 ===")
             lines.append("download=\(String(format: "%.1f Mbps", model.lastSpeed.downloadMbps)) bytes=\(Fmt.bytes(Double(model.lastSpeed.bytes))) secs=\(String(format: "%.1f", model.lastSpeed.seconds))")
             if let note = model.lastSpeed.errorNote {
@@ -330,7 +492,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static let demoWifi: WifiLinkState = {
         var w = WifiLinkState()
         w.interface = "en0"
-        w.ssid = "BUFALLO748_5G"
+        w.ssid = "HomeLab"
         w.channel = 48
         w.band = "5GHz"
         w.channelWidthMHz = 160
@@ -347,21 +509,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     static let demoOverview: NetOverviewState = {
         var o = NetOverviewState()
-        o.gateway = "192.168.2.1"
+        o.gateway = "192.168.50.1"
         o.dnsServers = ["1.1.1.1"]
         o.dnsSource = "手动设置"
-        o.ipv4 = "192.168.2.106"
+        o.ipv4 = "192.168.50.42"
         o.mask = "255.255.255.0"
-        o.publicIP = "114.249.51.114"
-        o.publicIPLocation = "中国"
-        o.colo = "LAX"
+        o.publicIP = "203.0.113.42"
+        o.publicIPLocation = "示例地区"
+        o.colo = "HKG"
         o.updated = Date()
         return o
     }()
 }
 
+enum QualityForScore {
+    static func label(_ score: Int) -> String {
+        if score >= 85 { return L10n.t("q.good") }
+        if score >= 70 { return L10n.t("q.fair") }
+        if score >= 50 { return L10n.t("q.poor") }
+        return L10n.t("q.bad")
+    }
+}
+
 @main
-struct WiFiDoctorApp: App {
+struct NetPulseApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {

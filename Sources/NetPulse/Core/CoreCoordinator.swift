@@ -37,10 +37,10 @@ final class CoreCoordinator {
         await MainActor.run { model.isRefreshing = true }
         defer { Task { await MainActor.run { model.isRefreshing = false } } }
 
-        async let live = WifiInfoCollector.pollLive(model: model)
-        async let scan = WifiInfoCollector.scanProfiler(model: model)
-        async let net = NetOverviewCollector.pollMain(model: model)
-        async let conn = connectionMonitor.sample(model: model)
+        async let live: Void = WifiInfoCollector.pollLive(model: model)
+        async let scan: Void = WifiInfoCollector.scanProfiler(model: model)
+        async let net: Void = NetOverviewCollector.pollMain(model: model)
+        async let conn: Void = connectionMonitor.sample(model: model)
 
         // 立即补一轮 ping
         await withTaskGroup(of: Void.self) { group in

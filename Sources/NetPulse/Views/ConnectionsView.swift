@@ -6,6 +6,17 @@ struct ConnectionsView: View {
     @ObservedObject private var l10n = L10n.shared
     @State private var mode: Mode = .byProcess
     @State private var searchText = ""
+    @State private var sort: ProcessSort = .liveRate
+
+    enum ProcessSort: String, CaseIterable, Identifiable {
+        case liveRate = "cn.sort.live"
+        case connections = "cn.sort.connections"
+        case total = "cn.sort.total"
+        case name = "cn.sort.name"
+
+        var id: String { rawValue }
+        var title: String { L10n.t(rawValue) }
+    }
 
     enum Mode: String, CaseIterable {
         case byProcess = "cn.who"
@@ -26,11 +37,12 @@ struct ConnectionsView: View {
     var body: some View {
         VStack(spacing: 0) {
             headerStrip
+            if let attentionProcess { attentionStrip(attentionProcess) }
             toolbar
             Rectangle().fill(Color.white.opacity(0.05)).frame(height: 0.8)
             Group {
                 switch mode {
-                case .byProcess: WhoUsesNetworkView(searchText: searchText)
+                case .byProcess: WhoUsesNetworkView(searchText: searchText, sort: sort)
                 case .byConnection: ConnectionTable(rows: filteredConnections)
                 case .listening: ListeningView(searchText: searchText)
                 }
@@ -43,46 +55,62 @@ struct ConnectionsView: View {
     // MARK: 顶部总览条
 
     private var headerStrip: some View {
-        HStack(spacing: 16) {
-            HStack(spacing: 8) {
-                Image(systemName: "arrow.down.circle.fill")
-                    .foregroundStyle(Theme.cyan)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(Fmt.rate(model.totalRateIn))
-                        .font(Theme.mono(16, .bold))
-                        .foregroundColor(Theme.cyan)
-                    Text(L10n.t("cn.totaldown"))
-                        .font(.system(size: 9))
-                        .foregroundColor(Theme.textFaint)
-                }
-            }
-            HStack(spacing: 8) {
-                Image(systemName: "arrow.up.circle.fill")
-                    .foregroundStyle(Theme.purple)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(Fmt.rate(model.totalRateOut))
-                        .font(Theme.mono(16, .bold))
-                        .foregroundColor(Theme.purple)
-                    Text(L10n.t("cn.totalup"))
-                        .font(.system(size: 9))
-                        .foregroundColor(Theme.textFaint)
-                }
-            }
-            Sparkline(values: model.rateHistory.map(\.in), color: Theme.cyan)
-                .frame(width: 120, height: 30)
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(L10n.tf("cn.apps.online",
-                             model.processTraffic.filter { $0.connections > 0 || $0.rateIn + $0.rateOut > 0 }.count))
-                    .font(.system(size: 11, weight: .semibold))
+        HStack(spacing: 18) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(L10n.tf("cn.activity.summary", activeAppCount, model.connections.count))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundColor(Theme.textPrimary)
-                Text(L10n.tf("cn.conn.summary", model.connections.count, model.listenRows.count))
-                    .font(Theme.mono(9.5))
+                Text(L10n.tf("cn.listen.summary", model.listenRows.count))
+                    .font(.system(size: 9.5))
                     .foregroundColor(Theme.textFaint)
             }
+            Spacer()
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.down")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(Theme.cyan)
+                MetricValue(value: Fmt.rate(model.totalRateIn), color: Theme.cyan, size: 12)
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(Theme.purple)
+                    .padding(.leading, 6)
+                MetricValue(value: Fmt.rate(model.totalRateOut), color: Theme.purple, size: 12)
+            }
+            Sparkline(values: model.rateHistory.map(\.in), color: Theme.cyan, lineWidth: 1.3)
+                .frame(width: 116, height: 28)
         }
         .padding(.horizontal, 4)
-        .padding(.bottom, 10)
+        .padding(.vertical, 10)
+    }
+
+    private var activeAppCount: Int {
+        model.processTraffic.filter { $0.connections > 0 || $0.rateIn + $0.rateOut > 8 }.count
+    }
+
+    private var attentionProcess: ProcessTraffic? {
+        model.processTraffic.first(where: {
+            $0.connections >= 30 || ($0.name.localizedCaseInsensitiveContains("unknown") && $0.connections >= 10)
+        })
+    }
+
+    private func attentionStrip(_ process: ProcessTraffic) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 10))
+                .foregroundColor(Theme.yellow)
+            Text(L10n.t("cn.attention"))
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundColor(Theme.yellow)
+            Text(L10n.tf("cn.attention.connections", AppBadgeInfo.of(process: process.name).label, process.connections))
+                .font(.system(size: 10.5))
+                .foregroundColor(Theme.textSecondary)
+            Spacer()
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 30)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.yellow.opacity(0.055)))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.yellow.opacity(0.16), lineWidth: 0.8))
+        .padding(.bottom, 8)
     }
 
     // MARK: 工具栏
@@ -112,21 +140,55 @@ struct ConnectionsView: View {
 
             Spacer()
 
+            if mode == .byProcess {
+                Menu {
+                    ForEach(ProcessSort.allCases) { option in
+                        Button {
+                            sort = option
+                        } label: {
+                            if option == sort { Label(option.title, systemImage: "checkmark") }
+                            else { Text(option.title) }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.up.arrow.down")
+                        Text(sort.title)
+                    }
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundColor(Theme.textSecondary)
+                    .padding(.horizontal, 9)
+                    .frame(height: 27)
+                    .background(Capsule().fill(Color.white.opacity(0.04)))
+                    .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 0.8))
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .environment(\.colorScheme, .dark)
+            }
+
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 10))
                     .foregroundColor(Theme.textFaint)
-                TextField(L10n.t("cn.search"), text: $searchText)
-                    .textFieldStyle(.plain)
-                    .font(Theme.mono(11))
-                    .frame(width: 170)
+                ZStack(alignment: .leading) {
+                    if searchText.isEmpty {
+                        Text(L10n.t("cn.search"))
+                            .font(.system(size: 10.5))
+                            .foregroundColor(Theme.textFaint)
+                    }
+                    TextField("", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .font(Theme.mono(11))
+                        .foregroundColor(Theme.textPrimary)
+                }
+                .frame(width: 170)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(Capsule().fill(Color.white.opacity(0.05)))
             .overlay(Capsule().strokeBorder(Color.white.opacity(0.10), lineWidth: 0.8))
-
-            LiveBadge()
         }
         .padding(.bottom, 10)
     }
@@ -148,18 +210,24 @@ struct WhoUsesNetworkView: View {
     @EnvironmentObject var model: AppModel
     @ObservedObject private var l10n = L10n.shared
     let searchText: String
+    let sort: ConnectionsView.ProcessSort
     @State private var expanded: Set<String> = []
 
     private var visible: [ProcessTraffic] {
         let active = model.processTraffic
             .filter { $0.rateIn + $0.rateOut > 8 || $0.connections > 0 }
-            .sorted { ($0.rateIn + $0.rateOut) > ($1.rateIn + $1.rateOut) }
+            .sorted(by: sorter)
         guard !searchText.isEmpty else { return Array(active.prefix(30)) }
         return active.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
     }
 
-    private var maxRate: Double {
-        max(visible.map { $0.rateIn + $0.rateOut }.max() ?? 1, 1024)
+    private func sorter(_ lhs: ProcessTraffic, _ rhs: ProcessTraffic) -> Bool {
+        switch sort {
+        case .liveRate: return lhs.rateIn + lhs.rateOut > rhs.rateIn + rhs.rateOut
+        case .connections: return lhs.connections > rhs.connections
+        case .total: return lhs.totalIn + lhs.totalOut > rhs.totalIn + rhs.totalOut
+        case .name: return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
     }
 
     var body: some View {
@@ -172,7 +240,7 @@ struct WhoUsesNetworkView: View {
                         ProcessCardRow(
                             proc: proc,
                             connections: model.connections.filter { $0.pid == proc.pid && $0.hasRemote },
-                            maxRate: maxRate,
+                            rateHistory: model.processRateHistory[proc.id] ?? fallbackHistory(for: proc),
                             expanded: expanded.contains(proc.id),
                             onToggle: { toggle(proc.id) })
                     }
@@ -181,6 +249,12 @@ struct WhoUsesNetworkView: View {
             .padding(.horizontal, 4)
             .padding(.vertical, 8)
         }
+    }
+
+    private func fallbackHistory(for process: ProcessTraffic) -> [Double] {
+        let total = max(model.totalRateIn + model.totalRateOut, 1)
+        let share = (process.rateIn + process.rateOut) / total
+        return model.rateHistory.suffix(36).map { max(0, ($0.in + $0.out) * share) }
     }
 
     private func toggle(_ id: String) {
@@ -196,13 +270,9 @@ struct ProcessCardRow: View {
     @ObservedObject private var l10n = L10n.shared
     let proc: ProcessTraffic
     let connections: [ConnectionRow]
-    let maxRate: Double
+    let rateHistory: [Double]
     let expanded: Bool
     let onToggle: () -> Void
-
-    private var share: Double {
-        min((proc.rateIn + proc.rateOut) / maxRate, 1)
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -228,17 +298,13 @@ struct ProcessCardRow: View {
                                     .background(Capsule().fill(Color.white.opacity(0.06)))
                             }
                         }
-                        // 带宽占比条
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Capsule().fill(Color.white.opacity(0.06))
-                                Capsule()
-                                    .fill(Theme.accentGradient.opacity(0.85))
-                                    .frame(width: max(3, CGFloat(share) * geo.size.width))
-                                    .shadow(color: Theme.cyan.opacity(0.4), radius: 3)
-                            }
+                        HStack(spacing: 8) {
+                            Text(L10n.tf("cn.accum", Fmt.bytes(Double(proc.totalIn)), Fmt.bytes(Double(proc.totalOut))))
+                                .font(Theme.mono(8.5))
+                                .foregroundColor(Theme.textFaint)
+                            Sparkline(values: rateHistory, color: Theme.cyan.opacity(0.86), lineWidth: 1.2)
+                                .frame(height: 18)
                         }
-                        .frame(height: 6)
                     }
 
                     Spacer(minLength: 8)
@@ -248,8 +314,8 @@ struct ProcessCardRow: View {
                             rateLabel(value: proc.rateIn, color: Theme.cyan, arrow: "arrow.down")
                             rateLabel(value: proc.rateOut, color: Theme.purple, arrow: "arrow.up")
                         }
-                        Text(L10n.tf("cn.accum", Fmt.bytes(Double(proc.totalIn)), Fmt.bytes(Double(proc.totalOut))))
-                            .font(Theme.mono(8.5))
+                        Text(L10n.t("cn.live.rate"))
+                            .font(.system(size: 8.5))
                             .foregroundColor(Theme.textFaint)
                     }
 
@@ -260,13 +326,12 @@ struct ProcessCardRow: View {
                 .padding(10)
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.white.opacity(0.035))
+                        .fill(Theme.panel.opacity(0.92))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .strokeBorder(
-                            LinearGradient(colors: [Theme.cyan.opacity(0.25), Theme.purple.opacity(0.15)],
-                                           startPoint: .leading, endPoint: .trailing),
+                            Theme.cardBorder,
                             lineWidth: 0.8)
                 )
             }
@@ -322,22 +387,15 @@ struct AppBadge: View {
     private var info: AppBadgeInfo.Info { AppBadgeInfo.of(process: process) }
 
     private var badgeColor: Color {
-        // 按名字稳定散列到主题色
-        let palette: [Color] = [Theme.cyan, Theme.purple, Theme.magenta, Theme.blue, Theme.green, Theme.orange]
-        var hash = 5381
-        for b in process.utf8 { hash = (hash << 5) &+ Int(b) &+ hash }
-        return palette[abs(hash) % palette.count]
+        Theme.cyan
     }
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(
-                    LinearGradient(colors: [badgeColor.opacity(0.32), badgeColor.opacity(0.12)],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing))
-                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(badgeColor.opacity(0.4), lineWidth: 0.8))
+                .fill(Theme.panelRaised)
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.hairline, lineWidth: 0.8))
                 .frame(width: 34, height: 34)
-                .shadow(color: badgeColor.opacity(0.25), radius: 5)
             if !info.symbol.isEmpty {
                 Image(systemName: info.symbol)
                     .font(.system(size: 14, weight: .medium))

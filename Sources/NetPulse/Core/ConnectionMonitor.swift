@@ -137,6 +137,7 @@ final class ConnectionMonitor {
                 model.connections = connSnapshot
                 model.listenRows = listenSnapshot
                 model.processTraffic = procSnapshot
+                model.recordProcessRates(procSnapshot)
                 model.totalRateIn = totalInSnap
                 model.totalRateOut = totalOutSnap
                 model.rateHistory.append((totalInSnap, totalOutSnap))

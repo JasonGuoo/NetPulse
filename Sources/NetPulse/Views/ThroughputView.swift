@@ -31,7 +31,7 @@ struct ThroughputView: View {
                 SpeedGauge(
                     mbps: model.lastSpeed.downloadMbps,
                     reference: model.wifi.txRate ?? 0,
-                    untestedText: L10n.t("sp.notested"))
+                    untestedText: L10n.t("sp.ready"))
                     .frame(height: 190)
 
                 Button {
@@ -49,20 +49,28 @@ struct ThroughputView: View {
                         }
                     }
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(AnyShapeStyle(
-                        LinearGradient(colors: [Theme.cyan, Theme.purple], startPoint: .leading, endPoint: .trailing)))
+                    .foregroundColor(Color(hex: 0x07101C))
                     .padding(.horizontal, 26)
                     .padding(.vertical, 9)
                     .background(
-                        Capsule().fill(.ultraThinMaterial.opacity(0.5))
-                            .overlay(Capsule().strokeBorder(Theme.accentGradient, lineWidth: 1.2))
+                        Capsule().fill(Theme.cyan)
                     )
-                    .shadow(color: Theme.cyan.opacity(0.35), radius: 10)
                 }
                 .buttonStyle(.plain)
                 .disabled(model.speedTesting)
 
                 if let at = model.lastSpeed.measuredAt {
+                    HStack(spacing: 8) {
+                        resultMetric(L10n.t("sp.result.download"),
+                                     String(format: "%.1f", model.lastSpeed.downloadMbps), "Mbps", Theme.cyan)
+                        resultMetric(L10n.t("sp.result.upload"),
+                                     model.lastSpeed.uploadMbps > 0 ? String(format: "%.1f", model.lastSpeed.uploadMbps) : "—",
+                                     model.lastSpeed.uploadMbps > 0 ? "Mbps" : "", Theme.purple)
+                        resultMetric(L10n.t("sp.result.latency"),
+                                     model.internetPing?.avg.map { String(format: "%.1f", $0) } ?? "—",
+                                     model.internetPing?.avg == nil ? "" : "ms",
+                                     model.internetHealthScore >= 70 ? Theme.green : Theme.yellow)
+                    }
                     Text(L10n.tf("sp.last.at",
                                  OverviewView.timeFormatter.string(from: at),
                                  Fmt.bytes(Double(model.lastSpeed.bytes)),
@@ -77,6 +85,19 @@ struct ThroughputView: View {
             }
             .frame(maxWidth: .infinity)
         }
+    }
+
+    private func resultMetric(_ title: String, _ value: String, _ unit: String, _ color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundColor(Theme.textFaint)
+            MetricValue(value: value, unit: unit, color: color, size: 14)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(9)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.panelRaised.opacity(0.72)))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.hairline, lineWidth: 0.8))
     }
 
     // MARK: 实时聚合流量
@@ -123,6 +144,15 @@ struct ThroughputView: View {
                            maxV: maxValue,
                            color: Theme.green,
                            suffix: Fmt.mbps((model.totalRateIn + model.totalRateOut) * 8 / 1_000_000))
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 9))
+                        .foregroundColor(Theme.textFaint)
+                    Text(L10n.t("sp.phy.note"))
+                        .font(.system(size: 9.5))
+                        .foregroundColor(Theme.textFaint)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if model.lastSpeed.downloadMbps > 0, let phy = model.wifi.txRate, phy > 0 {
                     let ratio = model.lastSpeed.downloadMbps / phy
                     Text(ratio > 0.4
@@ -161,7 +191,6 @@ struct ThroughputView: View {
                         .fill(LinearGradient(colors: [color.opacity(0.7), color],
                                              startPoint: .leading, endPoint: .trailing))
                         .frame(width: max(4, CGFloat(value / maxV) * geo.size.width))
-                        .shadow(color: color.opacity(0.5), radius: 4)
                 }
             }
             .frame(height: 8)

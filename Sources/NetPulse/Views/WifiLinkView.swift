@@ -4,6 +4,7 @@ import SwiftUI
 struct WifiLinkView: View {
     @EnvironmentObject var model: AppModel
     @ObservedObject private var l10n = L10n.shared
+    @State private var showChannelDetails = false
 
     var body: some View {
         ScrollView {
@@ -92,13 +93,73 @@ struct WifiLinkView: View {
     private var channelCard: some View {
         NeonCard(title: L10n.t("lk.channel.title"), systemImage: "wifi.exclamationmark") {
             VStack(alignment: .leading, spacing: 14) {
-                channelHeroRow
-                channelSection(analysis: band5)
-                Divider().overlay(Color.white.opacity(0.06))
-                channelSection(analysis: band24)
+                channelDecisionSummary
                 channelConclusionRow
-                routerHowToRow
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { showChannelDetails.toggle() }
+                } label: {
+                    HStack(spacing: 5) {
+                        Text(L10n.t(showChannelDetails ? "lk.hide.details" : "lk.view.details"))
+                        Image(systemName: showChannelDetails ? "chevron.up" : "chevron.down")
+                    }
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundColor(Theme.cyan)
+                }
+                .buttonStyle(.plain)
+
+                if showChannelDetails {
+                    SectionRule()
+                    channelHeroRow
+                    channelSection(analysis: band5)
+                    SectionRule()
+                    channelSection(analysis: band24)
+                    routerHowToRow
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
             }
+        }
+    }
+
+    private var channelDecisionSummary: some View {
+        let analysis = currentBandAnalysis
+        let overlap = analysis.overlapCount
+        let color: Color = overlap == 0 ? Theme.green : (overlap <= 2 ? Theme.cyan : (overlap <= 4 ? Theme.yellow : Theme.red))
+        let congestion = overlap == 0 ? L10n.t("lk.congestion.low")
+            : (overlap <= 2 ? L10n.t("lk.congestion.low")
+               : (overlap <= 4 ? L10n.t("lk.congestion.medium") : L10n.t("lk.congestion.high")))
+        return VStack(alignment: .leading, spacing: 11) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(channelText)
+                        .font(Theme.rounded(21, .semibold))
+                        .monospacedDigit()
+                        .foregroundColor(Theme.textPrimary)
+                    Text(L10n.tf("lk.overlap.summary", overlap))
+                        .font(.system(size: 10.5))
+                        .foregroundColor(Theme.textSecondary)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text(L10n.t("lk.congestion"))
+                        .font(.system(size: 9.5))
+                        .foregroundColor(Theme.textFaint)
+                    Text(congestion)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(color)
+                }
+            }
+            HStack(spacing: 7) {
+                Image(systemName: "arrow.turn.down.right")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(Theme.textFaint)
+                Text(analysis.recommendation)
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(9)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 8).fill(color.opacity(0.045)))
         }
     }
 
@@ -127,7 +188,6 @@ struct WifiLinkView: View {
                     .font(Theme.rounded(26, .bold))
                     .monospacedDigit()
                     .foregroundStyle(Theme.accentGradient)
-                    .shadow(color: Theme.cyan.opacity(0.5), radius: 6)
                 Text(heroWidthText)
                     .font(Theme.mono(9))
                     .foregroundColor(Theme.textFaint)
@@ -136,7 +196,7 @@ struct WifiLinkView: View {
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Theme.cyan.opacity(0.06))
+                    .fill(Theme.panelRaised.opacity(0.72))
                     .overlay(RoundedRectangle(cornerRadius: 12)
                         .strokeBorder(Theme.accentGradient.opacity(0.5), lineWidth: 1))
             )
@@ -181,17 +241,19 @@ struct WifiLinkView: View {
 
     private var channelConclusionRow: some View {
         let current = currentBandAnalysis
+        let impact = current.overlapCount <= 2 ? L10n.t("lk.impact.low")
+            : (current.overlapCount <= 4 ? L10n.t("lk.impact.medium") : L10n.t("lk.impact.high"))
         return HStack(alignment: .top, spacing: 8) {
             Image(systemName: current.conflict ? "exclamationmark.triangle.fill" : "checkmark.seal.fill")
                 .foregroundColor(current.conflict ? Theme.yellow : Theme.green)
                 .padding(.top, 1)
             VStack(alignment: .leading, spacing: 3) {
-                Text(current.conflict
-                     ? L10n.tf("lk.conflict.yes", current.overlapCount)
-                     : L10n.t("lk.conflict.no"))
+                Text(current.conflict ? L10n.t("lk.possible.interference") : L10n.t("lk.conflict.no"))
                     .font(.system(size: 11.5, weight: .semibold))
                     .foregroundColor(current.conflict ? Theme.yellow : Theme.green)
-                Text(current.recommendation)
+                Text(current.conflict
+                     ? L10n.tf("lk.interference.detail", current.overlapCount, impact)
+                     : L10n.t("lk.keep.channel"))
                     .font(.system(size: 10.5))
                     .foregroundColor(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)

@@ -14,7 +14,12 @@ enum Diagnoser {
         guard !pings.isEmpty else { return verdicts }
 
         let gateway = pings.first
-        let internet = pings.dropFirst()
+        // The second monitor is the configured DNS resolver. Keep it out of the
+        // public-Internet verdict so an ICMP-blocking DNS server cannot look like
+        // an ISP outage.
+        let internet = pings.dropFirst().filter {
+            !$0.label.localizedCaseInsensitiveContains("dns")
+        }
 
         // 1. WiFi 链路
         if !wifi.connected {
@@ -25,7 +30,7 @@ enum Diagnoser {
             return verdicts
         }
 
-        var wifiIssue: Verdict?
+        var localPathIssue: Verdict?
         if let gw = gateway, gw.sent > 3 {
             if gw.lossPct > 2 || (gw.avg ?? 0) > 30 || gw.jitter > 15 {
                 var detail = L10n.tf("vd.wifi.bad.fmt",
@@ -33,34 +38,37 @@ enum Diagnoser {
                                      gw.avg.map { Fmt.ms($0) } ?? L10n.t("dash"),
                                      Fmt.ms(gw.jitter))
                 var suggestion: String?
+                var title = L10n.t("vd.gateway.bad")
                 if let rssi = wifi.rssi, rssi < -70 {
                     detail += L10n.tf("vd.wifi.bad.weak", "\(rssi)")
+                    title = L10n.t("vd.wifi.bad")
                     suggestion = L10n.t("vd.wifi.tip.move")
                 } else if coChannel >= 4 {
                     detail += L10n.tf("vd.wifi.bad.crowd", coChannel)
+                    title = L10n.t("vd.wifi.bad")
                     suggestion = L10n.t("vd.wifi.tip.channel")
                 } else {
-                    suggestion = L10n.t("vd.wifi.tip.interfere")
+                    suggestion = L10n.t("vd.gateway.bad.tip")
                 }
-                wifiIssue = Verdict(severity: .bad, title: L10n.t("vd.wifi.bad"),
-                                    detail: detail, suggestion: suggestion)
+                localPathIssue = Verdict(severity: .bad, title: title,
+                                         detail: detail, suggestion: suggestion)
             }
         }
-        if wifiIssue == nil, let rssi = wifi.rssi {
+        if localPathIssue == nil, let rssi = wifi.rssi {
             let q = Quality.rssi(rssi)
             if q == .bad {
-                wifiIssue = Verdict(severity: .warn,
-                                    title: L10n.tf("vd.wifi.weak", "\(rssi)"),
-                                    detail: L10n.tf("vd.wifi.weak.detail", wifi.snr),
-                                    suggestion: L10n.t("vd.wifi.weak.tip"))
+                localPathIssue = Verdict(severity: .warn,
+                                         title: L10n.tf("vd.wifi.weak", "\(rssi)"),
+                                         detail: L10n.tf("vd.wifi.weak.detail", wifi.snr),
+                                         suggestion: L10n.t("vd.wifi.weak.tip"))
             } else if coChannel >= 4 {
-                wifiIssue = Verdict(severity: .warn, title: L10n.t("vd.wifi.crowd"),
-                                    detail: L10n.tf("vd.wifi.crowd.detail",
-                                                    wifi.channel.map(String.init) ?? L10n.t("dash"), coChannel),
-                                    suggestion: L10n.t("vd.wifi.crowd.tip"))
+                localPathIssue = Verdict(severity: .warn, title: L10n.t("vd.wifi.crowd"),
+                                         detail: L10n.tf("vd.wifi.crowd.detail",
+                                                         wifi.channel.map(String.init) ?? L10n.t("dash"), coChannel),
+                                         suggestion: L10n.t("vd.wifi.crowd.tip"))
             }
         }
-        if let issue = wifiIssue {
+        if let issue = localPathIssue {
             verdicts.append(issue)
         } else {
             verdicts.append(Verdict(

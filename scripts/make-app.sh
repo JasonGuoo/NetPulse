@@ -1,10 +1,10 @@
 #!/bin/bash
-# 打包 WiFiDoctor.app：release 构建 → 组装 bundle → icns 图标 → ad-hoc 签名
+# 打包 NetPulse.app：release 构建 → 组装 bundle → icns 图标 → ad-hoc 签名
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP="build/WiFiDoctor.app"
-BIN=".build/release/WiFiDoctor"
+APP="build/NetPulse.app"
+BIN=".build/release/NetPulse"
 
 echo "==> Release 构建（首次约 1-2 分钟）"
 swift build -c release
@@ -12,7 +12,8 @@ swift build -c release
 echo "==> 组装 .app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN" "$APP/Contents/MacOS/WiFiDoctor"
+cp "$BIN" "$APP/Contents/MacOS/NetPulse"
+cp "Sources/NetPulse/Resources/NetPulseIcon.png" "$APP/Contents/Resources/NetPulseIcon.png"
 
 echo "==> 生成图标"
 ICONSET="$APP/Contents/Resources/AppIcon.iconset"
@@ -25,12 +26,12 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key><string>WiFi Doctor</string>
-    <key>CFBundleDisplayName</key><string>WiFi Doctor</string>
-    <key>CFBundleIdentifier</key><string>com.jason.wifidoctor</string>
+    <key>CFBundleName</key><string>NetPulse</string>
+    <key>CFBundleDisplayName</key><string>NetPulse</string>
+    <key>CFBundleIdentifier</key><string>com.jason.netpulse</string>
     <key>CFBundleVersion</key><string>1</string>
     <key>CFBundleShortVersionString</key><string>1.0.0</string>
-    <key>CFBundleExecutable</key><string>WiFiDoctor</string>
+    <key>CFBundleExecutable</key><string>NetPulse</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
