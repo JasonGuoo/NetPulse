@@ -6,5 +6,6 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 LICENSE text eol=lf
+VERSION text eol=lf
 *.png binary
 *.icns binary

@@ -11,7 +11,7 @@ NetPulse is a native macOS network diagnostics app for Apple Silicon. It brings 
 
 ## Download
 
-[Download NetPulse 1.0 Beta 1](https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.1) from GitHub Releases. The published app supports Apple Silicon only and requires macOS 14 or later.
+[Download NetPulse 1.0 Beta 2](https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.2) from GitHub Releases. The published app supports Apple Silicon only and requires macOS 14 or later.
 
 The beta is ad-hoc signed, not notarized with Apple. On first launch, macOS may require you to Control-click `NetPulse.app`, choose **Open**, and confirm once. Source builds have the same limitation unless you sign and notarize them with your own Developer ID.
 
@@ -60,6 +60,12 @@ open build/NetPulse.app
 
 The packaging script produces an arm64-only, ad-hoc signed bundle at `build/NetPulse.app`. Build output is excluded from version control.
 
+Create the verified release zip and SHA-256 file with:
+
+```bash
+./scripts/package-release.sh
+```
+
 ## Data sources
 
 NetPulse uses macOS frameworks and command-line tools already present on the system. The main inputs are CoreWLAN, `system_profiler`, `lsof`, `nettop`, `route`, `scutil`, `ipconfig`, `ping`, `dig`, and `netstat`.
@@ -97,6 +103,7 @@ Process names, network addresses, SSIDs, and public IP details can be sensitive.
 ```text
 .
 ├── Package.swift
+├── VERSION                 # Current release version
 ├── Sources/NetPulse/
 │   ├── App.swift          # Application entry point and development utilities
 │   ├── AppModel.swift     # Shared observable state
@@ -106,7 +113,7 @@ Process names, network addresses, SSIDs, and public IP details can be sensitive.
 │   └── Views/             # Main application views
 ├── Tests/NetPulseTests/   # Parser and diagnostic-rule tests
 ├── docs/                  # Architecture, privacy, and release notes
-└── scripts/make-app.sh    # App bundle packaging
+└── scripts/               # App bundle and release-archive packaging
 ```
 
 The implementation is described in [Architecture](docs/ARCHITECTURE.md).

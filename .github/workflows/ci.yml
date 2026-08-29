@@ -31,12 +31,5 @@ jobs:
       - name: Run tests
         run: swift test --arch arm64
 
-      - name: Build app bundle
-        run: ./scripts/make-app.sh
-
-      - name: Verify bundle
-        run: |
-          plutil -lint build/NetPulse.app/Contents/Info.plist
-          codesign --verify --deep --strict build/NetPulse.app
-          test "$(lipo -archs build/NetPulse.app/Contents/MacOS/NetPulse)" = "arm64"
-          test -f build/NetPulse.app/Contents/Resources/LICENSE.txt
+      - name: Build and verify release artifacts
+        run: ./scripts/package-release.sh

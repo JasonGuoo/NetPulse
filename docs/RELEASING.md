@@ -4,7 +4,7 @@ This checklist covers Apple silicon beta releases distributed through GitHub Rel
 
 ## Versioning
 
-NetPulse follows semantic versioning. Beta tags use the form `v1.0.0-beta.1`. Published tags and assets are immutable; ship a new beta number instead of moving or replacing an existing release.
+NetPulse follows semantic versioning. Beta tags use the form `v1.0.0-beta.2`. Published tags and assets are immutable; ship a new beta number instead of moving or replacing an existing release.
 
 The app's `CFBundleShortVersionString` must contain only period-separated integers. Use `CFBundleVersion` and the Git tag to distinguish beta builds.
 
@@ -12,7 +12,7 @@ The app's `CFBundleShortVersionString` must contain only period-separated intege
 
 - Update `CHANGELOG.md` and move the completed items out of `Unreleased`.
 - Confirm that public documentation and release notes are in English.
-- Update the bundle version values in `scripts/make-app.sh` when needed.
+- Update the root `VERSION` file. The packaging scripts derive bundle and artifact versions from it.
 - Confirm that `README.md` and `docs/PRIVACY.md` still describe every endpoint and stored value.
 - Make sure the working tree is clean and synchronized with `main`.
 
@@ -20,8 +20,7 @@ The app's `CFBundleShortVersionString` must contain only period-separated intege
 
 ```bash
 swift test --arch arm64
-swift build -c release --arch arm64
-./scripts/make-app.sh
+./scripts/package-release.sh
 ```
 
 Verify the bundle:
@@ -35,17 +34,14 @@ test -f build/NetPulse.app/Contents/Resources/LICENSE.txt
 
 Run the app on an Apple silicon Mac and check all five views, refresh, the menu bar, one speed test, and one website diagnosis. Inspect an English self-test screenshot before publishing.
 
-## 3. Create the artifacts
+## 3. Check the artifacts
 
-Replace the example version with the release being prepared:
+`scripts/package-release.sh` creates the versioned arm64 zip and checksum in `build/`. Confirm that both filenames match `VERSION`, then verify the checksum:
 
 ```bash
-release_version="1.0.0-beta.2"
-artifact="NetPulse-${release_version}-macOS-arm64"
-ditto -c -k --sequesterRsrc --keepParent \
-  build/NetPulse.app "build/${artifact}.zip"
+release_version="$(tr -d '[:space:]' < VERSION)"
 cd build
-shasum -a 256 "${artifact}.zip" > "${artifact}.zip.sha256"
+shasum -a 256 -c "NetPulse-${release_version}-macOS-arm64.zip.sha256"
 cd ..
 ```
 

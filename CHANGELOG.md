@@ -4,6 +4,8 @@ This file records user-visible changes to NetPulse.
 
 ## [Unreleased]
 
+## [1.0.0-beta.2] - 2026-08-30
+
 ### Changed
 
 - Adopted the Zero-Clause BSD license.
@@ -11,6 +13,11 @@ This file records user-visible changes to NetPulse.
 - Made the packaging script produce arm64-only bundles and include the license in the app resources.
 - Added continuous integration and GitHub contribution templates.
 - Removed obsolete compiled app files from source control.
+
+### Fixed
+
+- Made English self-test screenshots independent of the current macOS language.
+- Made overview DNS timing use the selected interface language instead of a Chinese-only label.
 
 ## [1.0.0-beta.1] - 2026-08-29
 
@@ -25,5 +32,6 @@ This file records user-visible changes to NetPulse.
 - English, Simplified Chinese, Japanese, and Korean interface languages.
 - Apple silicon app bundle for macOS 14 and later.
 
-[Unreleased]: https://github.com/JasonGuoo/NetPulse/compare/v1.0.0-beta.1...HEAD
+[Unreleased]: https://github.com/JasonGuoo/NetPulse/compare/v1.0.0-beta.2...HEAD
+[1.0.0-beta.2]: https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.1

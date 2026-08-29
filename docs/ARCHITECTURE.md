@@ -78,4 +78,4 @@ UI work can be checked with `--selftest-png`, which renders deterministic sample
 
 ## Packaging
 
-`scripts/make-app.sh` performs an arm64 release build, assembles `NetPulse.app`, generates the `.icns` file, includes the license, and applies an ad-hoc signature. It does not create an installer, Developer ID signature, notarization ticket, or auto-update feed.
+The root `VERSION` file is the release-version source of truth. `scripts/make-app.sh` performs an arm64 release build, assembles `NetPulse.app`, generates the `.icns` file, includes the license, writes bundle version metadata, and applies an ad-hoc signature. `scripts/package-release.sh` verifies the bundle and creates the versioned zip and SHA-256 file. The project does not create an installer, Developer ID signature, notarization ticket, or auto-update feed.

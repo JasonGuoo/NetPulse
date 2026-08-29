@@ -40,8 +40,7 @@ Run these before opening a pull request:
 
 ```bash
 swift test --arch arm64
-swift build -c release --arch arm64
-./scripts/make-app.sh
+./scripts/package-release.sh
 codesign --verify --deep --strict build/NetPulse.app
 test "$(lipo -archs build/NetPulse.app/Contents/MacOS/NetPulse)" = "arm64"
 ```
