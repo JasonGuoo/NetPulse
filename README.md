@@ -1,91 +1,120 @@
 # NetPulse
 
-NetPulse 是一款原生 macOS 网络诊断工具，用来查看 Wi-Fi 信号、当前连接、延迟、DNS 和下载速率，也能把一次网页访问拆成 DNS、TCP、TLS、首字节和下载几个阶段。
+[![CI](https://github.com/JasonGuoo/NetPulse/actions/workflows/ci.yml/badge.svg)](https://github.com/JasonGuoo/NetPulse/actions/workflows/ci.yml)
+![Platform](https://img.shields.io/badge/macOS-14%2B-black?logo=apple)
+![Architecture](https://img.shields.io/badge/Apple%20Silicon-arm64-3478f6)
+![License](https://img.shields.io/badge/license-0BSD-2ea44f)
 
-应用支持中文、英文、日语和韩语。
+NetPulse is a native macOS network diagnostics app for Apple Silicon. It brings Wi-Fi conditions, latency, DNS, live traffic, download throughput, and website timing into one place so that a slow connection is easier to explain.
 
-![NetPulse 概况页](docs/overview.png)
+![NetPulse overview](docs/overview.png)
 
-## 主要功能
+## Download
 
-| 页面 | 能看到什么 |
+[Download NetPulse 1.0 Beta 1](https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.1) from GitHub Releases. The published app supports Apple Silicon only and requires macOS 14 or later.
+
+The beta is ad-hoc signed, not notarized with Apple. On first launch, macOS may require you to Control-click `NetPulse.app`, choose **Open**, and confirm once. Source builds have the same limitation unless you sign and notarize them with your own Developer ID.
+
+## What NetPulse shows
+
+| Area | Details |
 | --- | --- |
-| 概况 | 网关、DNS、代理、VPN、公网出口、Wi-Fi 状态和当前健康结论 |
-| 连接 | 按进程汇总的实时流量、远端地址、累计流量和本机监听端口 |
-| 链路 | RSSI、噪声、SNR、协商速率、信道宽度、MCS、PHY、周边信道占用和延迟走势 |
-| 速率 | Cloudflare 下载测速、Wi-Fi 协商速率和整机实时流量对照 |
-| 诊断 | 指定网址的 DNS、TCP、TLS、首字节和下载耗时，以及 DNS 服务器对比 |
+| Overview | Health score, likely root cause, gateway, active DNS, proxy and VPN state, public egress, and Wi-Fi status |
+| Connections | Per-process traffic, active remote endpoints, cumulative transfer totals, and local listening ports |
+| Wi-Fi link | RSSI, noise, SNR, negotiated rate, channel width, MCS, PHY mode, nearby channel use, and latency history |
+| Speed | Cloudflare download test alongside negotiated Wi-Fi rate and whole-system traffic |
+| Diagnose | DNS, TCP, TLS, time to first byte, and download timing for a URL, plus system and public DNS comparison |
+| Menu bar | Signal strength, link rate, gateway and DNS latency, and current network status |
 
-健康结论来自一组本地规则，主要用于区分 Wi-Fi 信号或干扰、外网质量、DNS、服务器响应和带宽问题。它适合排查方向，不代替抓包或运营商侧诊断。
+The interface can follow the system language or use English, Simplified Chinese, Japanese, or Korean.
 
-## 运行要求
+## Requirements
 
-- macOS 14 Sonoma 或更高版本
-- 从源码构建需要 Xcode Command Line Tools，以及 Swift 5.10 或更高版本
-- 运行时不需要 `sudo`，也不安装后台服务
+- A Mac with Apple silicon
+- macOS 14 Sonoma or later
+- Xcode Command Line Tools and a Swift 5.10 or later toolchain to build from source
 
-## 构建
+NetPulse does not require `sudo` and does not install a background service.
+
+## Build from source
 
 ```bash
-swift build
+git clone https://github.com/JasonGuoo/NetPulse.git
+cd NetPulse
+swift build --arch arm64
 swift run NetPulse
-swift test
 ```
 
-打包成可双击运行的 App：
+Run the test suite with:
+
+```bash
+swift test --arch arm64
+```
+
+Create a double-clickable app bundle with:
 
 ```bash
 ./scripts/make-app.sh
 open build/NetPulse.app
 ```
 
-脚本会生成 ad-hoc 签名的 `build/NetPulse.app`。它没有经过 Apple 公证，因此发到另一台 Mac 后，首次启动可能需要在 Finder 中右键选择“打开”。构建目录不会提交到仓库。
+The packaging script produces an arm64-only, ad-hoc signed bundle at `build/NetPulse.app`. Build output is excluded from version control.
 
-## 数据来源与隐私
+## Data sources
 
-NetPulse 主要读取 macOS 自带接口和命令的输出，包括 CoreWLAN、`system_profiler`、`lsof`、`nettop`、`route`、`scutil`、`ipconfig`、`ping`、`dig` 和 `netstat`。项目没有第三方 Swift 依赖，也没有自己的服务端。
+NetPulse uses macOS frameworks and command-line tools already present on the system. The main inputs are CoreWLAN, `system_profiler`, `lsof`, `nettop`, `route`, `scutil`, `ipconfig`, `ping`, `dig`, and `netstat`.
 
-下面几类操作会产生外部网络请求：
+Collectors feed a shared application model. Rule-based diagnostics then compare signal quality, latency, loss, DNS timing, HTTP timing, and measured throughput. These results are troubleshooting clues, not a substitute for a packet capture or an ISP-side test.
 
-- 公网出口信息：启动后及约每 5 分钟访问 Cloudflare trace 和 ipinfo.io
-- 下载测速：手动触发后访问 Cloudflare，通常下载 8–28 MB；失败重试时可能更多
-- 网页诊断：访问你输入的网址，并向系统 DNS 和公共 DNS 发起查询
+The project has no third-party Swift package dependencies and no NetPulse backend.
 
-最近诊断过的网址保存在本机的 UserDefaults。进程名、连接地址、SSID 和公网 IP 都可能涉及隐私；提交截图、日志或 Issue 前请先检查并打码。
+## Network access and privacy
 
-## 已知限制
+NetPulse has no accounts, analytics, advertising, or crash-reporting service. It saves the selected interface language, the last diagnosed URL, and up to five recent diagnostic URLs in the current user's macOS preferences. Measurement results remain in memory and are discarded when NetPulse quits.
 
-- macOS 的隐私策略和系统版本会影响 SSID、周边网络等字段，读不到时界面会留空或显示受限提示。
-- 普通用户无法完整读取其他用户或 root 进程的连接信息。
-- 单条连接的丢包无法在无特权模式下准确获取；界面使用目标 ping 和系统级 TCP 重传作为参考。
-- ICMP 被路由器或网络屏蔽时，ping 结果不能单独说明网络已经断开。
-- 下载测速会消耗实际流量，不建议在按流量计费的网络上频繁运行。
+The following features make network requests:
 
-## 项目结构
+| Activity | When it runs | Destination |
+| --- | --- | --- |
+| Connectivity and latency checks | While NetPulse is running | The current gateway, active DNS server, `1.1.1.1`, and `8.8.8.8` |
+| Public egress lookup | At launch and about every five minutes | Cloudflare trace and `ipinfo.io` |
+| Download speed test | Only when requested | Cloudflare's speed test endpoint; normally about 8–28 MB including warm-up |
+| Website diagnosis | Only when requested | The URL entered by the user, the system resolver, `1.1.1.1`, and `8.8.8.8` |
+
+Process names, network addresses, SSIDs, and public IP details can be sensitive. Review and redact screenshots or logs before posting them. See [Privacy](docs/PRIVACY.md) for the full data-flow summary.
+
+## Known limitations
+
+- macOS privacy controls and OS changes can hide the SSID or nearby networks.
+- An unprivileged process cannot always inspect connections owned by other users or `root`.
+- Per-connection packet loss is not available without elevated capture privileges. NetPulse uses target pings and system-wide TCP retransmissions as supporting signals.
+- Some routers and networks block ICMP. A failed ping alone does not prove that the Internet connection is down.
+- Download tests use real bandwidth and may incur data charges.
+- A health score compresses several measurements into one number. Check the underlying metrics before acting on it.
+
+## Repository layout
 
 ```text
 .
 ├── Package.swift
 ├── Sources/NetPulse/
-│   ├── App.swift          # 应用入口和开发自检
-│   ├── AppModel.swift     # UI 使用的全局状态
-│   ├── Components/        # 图表和通用组件
-│   ├── Core/              # 采集、测速和诊断逻辑
-│   └── Views/             # 五个主页面
-├── Tests/NetPulseTests/   # 解析器和诊断规则测试
-└── scripts/make-app.sh    # 生成 .app
+│   ├── App.swift          # Application entry point and development utilities
+│   ├── AppModel.swift     # Shared observable state
+│   ├── Components/        # Reusable charts and visual components
+│   ├── Core/              # Collection, diagnostics, and speed testing
+│   ├── Resources/         # App icon source
+│   └── Views/             # Main application views
+├── Tests/NetPulseTests/   # Parser and diagnostic-rule tests
+├── docs/                  # Architecture, privacy, and release notes
+└── scripts/make-app.sh    # App bundle packaging
 ```
 
-## 参与开发
+The implementation is described in [Architecture](docs/ARCHITECTURE.md).
 
-Issue 和 Pull Request 都可以直接提。改解析器时请同时补一份脱敏后的测试样本；不要提交真实 SSID、公网 IP、设备名或账号信息。
+## Contributing
 
-提交前至少运行：
-
-```bash
-swift test
-```
+Bug reports and pull requests are welcome. Read [Contributing](CONTRIBUTING.md) before sending a change. Use the private process in [Security](SECURITY.md) for vulnerabilities, and use [Support](SUPPORT.md) for general help. Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md); project decisions are described in [Governance](GOVERNANCE.md), and release history is recorded in the [Changelog](CHANGELOG.md).
 
 ## License
 
-项目使用 [MIT License](LICENSE)。可以修改、分发、商用或用于闭源项目，但需要保留许可证和版权声明。
+NetPulse is released under the [Zero-Clause BSD license](LICENSE). You may use, modify, and distribute it for any purpose, with or without fee. Unless a file says otherwise, the source code, tests, documentation, and bundled artwork in this repository use the same license.

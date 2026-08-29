@@ -70,7 +70,7 @@ final class CoreCoordinator {
             let wifi = model.wifi
             let pings = model.pingTargets
             let coChannel = model.coChannelNeighbors
-            let dnsMs = model.dnsResults.first(where: { $0.server.hasPrefix("系统") })?.ms
+            let dnsMs = model.dnsResults.first(where: { $0.server.hasPrefix(L10n.t("dns.system")) })?.ms
             let publicIP = model.overview.publicIP
 
             let verdicts = Diagnoser.overviewVerdicts(

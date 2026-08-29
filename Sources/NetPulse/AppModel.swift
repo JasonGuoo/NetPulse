@@ -17,7 +17,7 @@ final class AppModel: ObservableObject {
     @Published var processRateHistory: [String: [Double]] = [:]
 
     @Published var pingTargets: [PingTargetState] = [
-        PingTargetState(label: "网关", host: ""),
+        PingTargetState(label: L10n.t("pk.gateway"), host: ""),
         PingTargetState(label: "DNS", host: "1.1.1.1"),
         PingTargetState(label: "Cloudflare", host: "1.1.1.1"),
         PingTargetState(label: "Google", host: "8.8.8.8"),

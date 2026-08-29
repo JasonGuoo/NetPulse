@@ -1,0 +1,71 @@
+name: Bug report
+description: Report reproducible behavior that is incorrect or unexpected.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a problem. Remove private network and account details before submitting. Use the private security report for vulnerabilities.
+
+  - type: input
+    id: version
+    attributes:
+      label: NetPulse version
+      description: Enter the release version or commit hash.
+      placeholder: 1.0.0-beta.1
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Mac and macOS version
+      description: Include the Mac model and exact macOS version.
+      placeholder: MacBook Pro M3, macOS 15.6
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Explain the observed behavior and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open NetPulse.
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: network
+    attributes:
+      label: Relevant network setup
+      description: Mention VPN, proxy, private relay, managed DNS, or unusual routing. Do not include real addresses unless essential.
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs or screenshots
+      description: Drag in redacted evidence if it helps reproduce the issue.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I reproduced this on the latest release or current `main`.
+          required: true
+        - label: I removed secrets, SSIDs, IP addresses, hostnames, account names, and unrelated process details.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

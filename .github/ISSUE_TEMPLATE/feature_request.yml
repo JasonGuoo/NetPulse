@@ -1,0 +1,43 @@
+name: Feature request
+description: Propose a focused improvement to NetPulse.
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What diagnostic task is difficult today, and who encounters it?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the smallest change that would solve the problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence or example
+      description: Add a redacted example, screenshot, or measurement that shows the need.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Explain current workarounds or simpler approaches you considered.
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope checks
+      options:
+        - label: This is relevant to Apple silicon Macs running macOS 14 or later.
+          required: true
+        - label: The request does not include private network or account data.
+          required: true

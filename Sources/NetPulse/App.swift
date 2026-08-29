@@ -8,11 +8,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // 开发用：无头渲染主窗口为 PNG（不依赖屏幕录制权限）；可带 Tab 名：概况/连接/链路/速率/诊断
+        if let lang = ProcessInfo.processInfo.environment["NETPULSE_LANG"],
+           let language = AppLanguage(rawValue: lang) {
+            L10n.shared.language = language
+        }
+
+        // Render a deterministic view to PNG without screen-recording permission.
         if let idx = CommandLine.arguments.firstIndex(of: "--selftest-png"),
            CommandLine.arguments.count > idx + 1 {
             let path = CommandLine.arguments[idx + 1]
-            let tabName = CommandLine.arguments.count > idx + 2 ? CommandLine.arguments[idx + 2] : "概况"
+            let tabName = CommandLine.arguments.count > idx + 2
+                ? CommandLine.arguments[idx + 2]
+                : ContentView.Tab.overview.rawValue
             let tab = ContentView.Tab.allCases.first { $0.rawValue == tabName || $0.title == tabName } ?? .overview
             Self.renderSelftestPNG(to: path, tab: tab)
             exit(0)
@@ -281,11 +288,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: - 自检渲染
 
     static func renderSelftestPNG(to path: String, tab: ContentView.Tab = .overview) {
-        // 支持 WFD_LANG 环境变量覆盖语言（视觉自检用）
-        if let lang = ProcessInfo.processInfo.environment["WFD_LANG"],
-           let l = AppLanguage(rawValue: lang) {
-            L10n.shared.language = l
-        }
         let model = AppModel()
         model.wifi = Self.demoWifi
         model.overview = Self.demoOverview
@@ -367,7 +369,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     static let demoPings: [PingTargetState] = {
-        var gw = PingTargetState(label: "网关", host: "192.168.50.1")
+        var gw = PingTargetState(label: L10n.t("pk.gateway"), host: "192.168.50.1")
         gw.history = [3.9, 4.2, 4.0, 4.4, 4.1, 4.3, 4.0, 4.2]
         gw.sent = 30; gw.received = 30; gw.last = 4.2; gw.avg = 4.15
         var dns = PingTargetState(label: "DNS 1.1.1.1", host: "1.1.1.1")
@@ -380,11 +382,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }()
 
     static let demoNeighbors: [NeighborNetwork] = [
-        NeighborNetwork(ssid: "Apartment-2G", channel: 6, band: "2.4GHz", widthMHz: 20, rssi: -70, security: "WPA2 个人", phyMode: "802.11n"),
-        NeighborNetwork(ssid: "Guest-WiFi", channel: 6, band: "2.4GHz", widthMHz: 20, rssi: -78, security: "WPA2 个人", phyMode: "802.11n"),
-        NeighborNetwork(ssid: "Coffee-Shop", channel: 1, band: "2.4GHz", widthMHz: 40, rssi: -80, security: "WPA2 个人", phyMode: "802.11n"),
-        NeighborNetwork(ssid: "HomeLab", channel: 157, band: "5GHz", widthMHz: 80, rssi: -58, security: "WPA2 个人", phyMode: "802.11ax", isOwnRouter: true),
-        NeighborNetwork(ssid: "Office-5G", channel: 44, band: "5GHz", widthMHz: 80, rssi: -62, security: "WPA2 个人", phyMode: "802.11ax"),
+        NeighborNetwork(ssid: "Apartment-2G", channel: 6, band: "2.4GHz", widthMHz: 20, rssi: -70, security: "WPA2 Personal", phyMode: "802.11n"),
+        NeighborNetwork(ssid: "Guest-WiFi", channel: 6, band: "2.4GHz", widthMHz: 20, rssi: -78, security: "WPA2 Personal", phyMode: "802.11n"),
+        NeighborNetwork(ssid: "Coffee-Shop", channel: 1, band: "2.4GHz", widthMHz: 40, rssi: -80, security: "WPA2 Personal", phyMode: "802.11n"),
+        NeighborNetwork(ssid: "HomeLab", channel: 157, band: "5GHz", widthMHz: 80, rssi: -58, security: "WPA2 Personal", phyMode: "802.11ax", isOwnRouter: true),
+        NeighborNetwork(ssid: "Office-5G", channel: 44, band: "5GHz", widthMHz: 80, rssi: -62, security: "WPA2 Personal", phyMode: "802.11ax"),
     ]
 
     static let demoProcesses: [ProcessTraffic] = [
@@ -511,11 +513,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var o = NetOverviewState()
         o.gateway = "192.168.50.1"
         o.dnsServers = ["1.1.1.1"]
-        o.dnsSource = "手动设置"
+        o.dnsSource = "manual"
         o.ipv4 = "192.168.50.42"
         o.mask = "255.255.255.0"
         o.publicIP = "203.0.113.42"
-        o.publicIPLocation = "示例地区"
+        o.publicIPLocation = "Sample Region"
         o.colo = "HKG"
         o.updated = Date()
         return o

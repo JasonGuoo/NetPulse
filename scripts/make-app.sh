@@ -1,21 +1,22 @@
 #!/bin/bash
-# 打包 NetPulse.app：release 构建 → 组装 bundle → icns 图标 → ad-hoc 签名
+# Build, assemble, and ad-hoc sign the Apple Silicon app bundle.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 APP="build/NetPulse.app"
 BIN=".build/release/NetPulse"
 
-echo "==> Release 构建（首次约 1-2 分钟）"
-swift build -c release
+echo "==> Building the arm64 release binary"
+swift build -c release --arch arm64
 
-echo "==> 组装 .app"
+echo "==> Assembling the app bundle"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/NetPulse"
 cp "Sources/NetPulse/Resources/NetPulseIcon.png" "$APP/Contents/Resources/NetPulseIcon.png"
+cp "LICENSE" "$APP/Contents/Resources/LICENSE.txt"
 
-echo "==> 生成图标"
+echo "==> Generating the app icon"
 ICONSET="$APP/Contents/Resources/AppIcon.iconset"
 "$BIN" --make-icon "$ICONSET"
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
@@ -28,23 +29,26 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <dict>
     <key>CFBundleName</key><string>NetPulse</string>
     <key>CFBundleDisplayName</key><string>NetPulse</string>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
     <key>CFBundleIdentifier</key><string>com.jason.netpulse</string>
     <key>CFBundleVersion</key><string>1</string>
     <key>CFBundleShortVersionString</key><string>1.0.0</string>
     <key>CFBundleExecutable</key><string>NetPulse</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
+    <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Jason Guo. Licensed under 0BSD.</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
 </dict>
 </plist>
 PLIST
 
-echo "==> ad-hoc 签名"
+echo "==> Applying an ad-hoc signature"
 codesign --force --sign - "$APP"
 
 echo ""
-echo "✅ 完成: $APP"
-echo "   双击即可运行；分发给他人时压缩成 zip 发送即可。"
-echo "   若对方首次打开提示「无法验证开发者」：右键 App → 打开 → 再点「打开」。"
+echo "Done: $APP"
+echo "The bundle is ad-hoc signed and is not notarized by Apple."
+echo "On another Mac, the first launch may require Control-clicking the app and choosing Open."

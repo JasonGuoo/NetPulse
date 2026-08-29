@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-package:
+    name: Build, test, and package
+    runs-on: macos-14
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Run tests
+        run: swift test --arch arm64
+
+      - name: Build app bundle
+        run: ./scripts/make-app.sh
+
+      - name: Verify bundle
+        run: |
+          plutil -lint build/NetPulse.app/Contents/Info.plist
+          codesign --verify --deep --strict build/NetPulse.app
+          test "$(lipo -archs build/NetPulse.app/Contents/MacOS/NetPulse)" = "arm64"
+          test -f build/NetPulse.app/Contents/Resources/LICENSE.txt
