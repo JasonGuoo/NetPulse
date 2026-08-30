@@ -4,6 +4,11 @@ This file records user-visible changes to NetPulse.
 
 ## [Unreleased]
 
+### Changed
+
+- Reorganized the README into separate sections for end users and developers.
+- Adopted the MIT License for the current source tree so copies and substantial portions must retain the original copyright and permission notice.
+
 ## [1.0.0-beta.4] - 2026-08-30
 
 ### Added

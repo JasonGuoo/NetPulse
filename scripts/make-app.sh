@@ -53,7 +53,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
-    <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Jason Guo. Licensed under 0BSD.</string>
+    <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Jason Guo. Licensed under MIT.</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
     <key>NetPulseReleaseVersion</key><string>0.0.0</string>
