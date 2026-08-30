@@ -44,4 +44,33 @@ final class IconTests: XCTestCase {
             XCTAssertGreaterThan(center.alphaComponent, 0.95, name)
         }
     }
+
+    func testStatusItemIconIsCustomColoredAndAnimated() throws {
+        let goodColor = try XCTUnwrap(
+            AppDelegate.statusItemQualityColor(score: 92, connected: true)
+                .usingColorSpace(.deviceRGB)
+        )
+        let warningColor = try XCTUnwrap(
+            AppDelegate.statusItemQualityColor(score: 58, connected: true)
+                .usingColorSpace(.deviceRGB)
+        )
+        let offlineColor = try XCTUnwrap(
+            AppDelegate.statusItemQualityColor(score: 92, connected: false)
+                .usingColorSpace(.deviceRGB)
+        )
+
+        XCTAssertGreaterThan(goodColor.greenComponent, goodColor.redComponent)
+        XCTAssertGreaterThan(warningColor.redComponent, warningColor.blueComponent)
+        XCTAssertGreaterThan(offlineColor.redComponent, offlineColor.greenComponent)
+
+        let first = AppDelegate.renderStatusItemIcon(score: 92, connected: true, phase: 0.1)
+        let second = AppDelegate.renderStatusItemIcon(score: 92, connected: true, phase: 0.6)
+        let warning = AppDelegate.renderStatusItemIcon(score: 58, connected: true, phase: 0.1)
+        let offline = AppDelegate.renderStatusItemIcon(score: 92, connected: false, phase: 0.1)
+        XCTAssertEqual(first.size, NSSize(width: 22, height: 18))
+        XCTAssertFalse(first.isTemplate)
+        XCTAssertNotEqual(first.tiffRepresentation, second.tiffRepresentation)
+        XCTAssertNotEqual(first.tiffRepresentation, warning.tiffRepresentation)
+        XCTAssertNotEqual(warning.tiffRepresentation, offline.tiffRepresentation)
+    }
 }

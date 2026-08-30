@@ -87,17 +87,42 @@ final class CoreCoordinator {
     // MARK: - 按需动作（UI 触发）
 
     func runSpeedTest() async {
-        let result = await SpeedTest.run { [weak self] liveMbps, _ in
+        await MainActor.run {
+            model.speedTesting = true
+            model.speedProgress = SpeedTestProgress(phase: .warmingUp)
+        }
+
+        let result = await SpeedTest.run { [weak self] progress in
             Task { @MainActor [weak self] in
-                guard let self else { return }
-                var s = self.model.lastSpeed
-                s.downloadMbps = liveMbps
-                s.measuredAt = Date()
-                self.model.lastSpeed = s
+                guard let self, self.model.speedTesting else { return }
+                var next = progress
+                if progress.phase == .measuring || progress.phase == .retrying,
+                   progress.instantaneousMbps > 0 {
+                    var samples = self.model.speedProgress.samples
+                    samples.append(progress.instantaneousMbps)
+                    if samples.count > 72 { samples.removeFirst(samples.count - 72) }
+                    next.samples = samples
+                } else if progress.phase == .preparing {
+                    next.samples = []
+                } else {
+                    next.samples = self.model.speedProgress.samples
+                }
+                self.model.speedProgress = next
             }
         }
         await MainActor.run {
             model.lastSpeed = result
+            var progress = model.speedProgress
+            let succeeded = result.bytes >= 10_000
+            progress.phase = succeeded ? .completed : .failed
+            progress.instantaneousMbps = result.downloadMbps
+            progress.averageMbps = result.downloadMbps
+            progress.peakMbps = max(progress.peakMbps, result.downloadMbps)
+            if succeeded { progress.fraction = 1 }
+            progress.elapsed = result.seconds
+            progress.receivedBytes = result.bytes
+            model.speedProgress = progress
+            model.speedTesting = false
         }
     }
 

@@ -129,14 +129,11 @@ struct MenuBarPanelView: View {
 
     private var header: some View {
         HStack(spacing: 11) {
-            ZStack {
-                Circle()
-                    .fill(Theme.green.opacity(0.16))
-                    .frame(width: 24, height: 24)
-                Circle()
-                    .fill(Theme.green)
-                    .frame(width: 8, height: 8)
-            }
+            Image(nsImage: AppDelegate.renderIcon(size: 28))
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 26, height: 26)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("NetPulse \(L10n.t("menu.running"))")
@@ -149,9 +146,13 @@ struct MenuBarPanelView: View {
 
             Spacer()
 
-            Image(systemName: snapshot.wifiConnected ? "wifi" : "wifi.slash")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(snapshot.wifiConnected ? Theme.cyan : Theme.textFaint)
+            Image(nsImage: AppDelegate.renderStatusItemIcon(
+                score: snapshot.healthScore,
+                connected: snapshot.wifiConnected,
+                phase: 0.48
+            ))
+            .interpolation(.high)
+            .frame(width: 22, height: 18)
         }
         .padding(.horizontal, 14)
         .frame(height: 58)

@@ -27,6 +27,7 @@ final class AppModel: ObservableObject {
     @Published var verdicts: [Verdict] = []
     @Published var lastSpeed = SpeedResult()
     @Published var speedTesting = false
+    @Published var speedProgress = SpeedTestProgress()
 
     @Published var lastTiming: HttpTimingResult?
     @Published var diagnosing = false

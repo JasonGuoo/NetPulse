@@ -29,10 +29,64 @@ struct ThroughputView: View {
         NeonCard(title: L10n.t("sp.gauge"), systemImage: "speedometer") {
             VStack(spacing: 14) {
                 SpeedGauge(
-                    mbps: model.lastSpeed.downloadMbps,
+                    mbps: displayedMbps,
+                    averageMbps: displayedAverageMbps,
+                    peakMbps: model.speedProgress.peakMbps,
                     reference: model.wifi.txRate ?? 0,
+                    testing: model.speedTesting,
+                    stageText: speedStageText,
                     untestedText: L10n.t("sp.ready"))
-                    .frame(height: 190)
+                    .frame(height: 212)
+
+                if model.speedTesting || !model.speedProgress.samples.isEmpty {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 8) {
+                            resultMetric(L10n.t("sp.live.current"),
+                                         String(format: "%.1f", displayedMbps), "Mbps", Theme.cyan)
+                            resultMetric(L10n.t("sp.live.average"),
+                                         String(format: "%.1f", displayedAverageMbps), "Mbps", Theme.green)
+                            resultMetric(L10n.t("sp.live.peak"),
+                                         String(format: "%.1f", model.speedProgress.peakMbps), "Mbps", Theme.purple)
+                        }
+
+                        HStack {
+                            Text(speedStageText)
+                                .font(.system(size: 10.5, weight: .semibold))
+                                .foregroundColor(model.speedTesting ? Theme.cyan : Theme.green)
+                            Spacer()
+                            Text(L10n.tf(
+                                "sp.progress",
+                                Int((model.speedProgress.fraction * 100).rounded()),
+                                Fmt.bytes(Double(model.speedProgress.receivedBytes))
+                            ))
+                            .font(Theme.mono(9.5, .medium))
+                            .foregroundColor(Theme.textFaint)
+                        }
+
+                        GeometryReader { geometry in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Color.white.opacity(0.055))
+                                Capsule()
+                                    .fill(Theme.accentGradient)
+                                    .frame(width: geometry.size.width * CGFloat(min(max(model.speedProgress.fraction, 0), 1)))
+                            }
+                        }
+                        .frame(height: 5)
+                        .animation(.easeOut(duration: 0.18), value: model.speedProgress.fraction)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(L10n.t("sp.live.chart"))
+                                .font(.system(size: 9, weight: .semibold))
+                                .kerning(0.8)
+                                .foregroundColor(Theme.textFaint)
+                            LiveSpeedChart(values: model.speedProgress.samples)
+                                .frame(height: 66)
+                        }
+                    }
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 9).fill(Theme.panelMuted.opacity(0.62)))
+                    .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(Theme.hairline, lineWidth: 0.8))
+                }
 
                 Button {
                     Task { await runSpeedTest() }
@@ -59,13 +113,12 @@ struct ThroughputView: View {
                 .buttonStyle(.plain)
                 .disabled(model.speedTesting)
 
-                if let at = model.lastSpeed.measuredAt {
+                if let at = model.lastSpeed.measuredAt, !model.speedTesting {
                     HStack(spacing: 8) {
                         resultMetric(L10n.t("sp.result.download"),
                                      String(format: "%.1f", model.lastSpeed.downloadMbps), "Mbps", Theme.cyan)
-                        resultMetric(L10n.t("sp.result.upload"),
-                                     model.lastSpeed.uploadMbps > 0 ? String(format: "%.1f", model.lastSpeed.uploadMbps) : "—",
-                                     model.lastSpeed.uploadMbps > 0 ? "Mbps" : "", Theme.purple)
+                        resultMetric(L10n.t("sp.live.peak"),
+                                     String(format: "%.1f", model.speedProgress.peakMbps), "Mbps", Theme.purple)
                         resultMetric(L10n.t("sp.result.latency"),
                                      model.internetPing?.avg.map { String(format: "%.1f", $0) } ?? "—",
                                      model.internetPing?.avg == nil ? "" : "ms",
@@ -77,13 +130,34 @@ struct ThroughputView: View {
                                  model.lastSpeed.seconds))
                         .font(Theme.mono(9.5))
                         .foregroundColor(Theme.textFaint)
-                } else {
+                } else if !model.speedTesting {
                     Text(L10n.t("sp.note"))
                         .font(.system(size: 10))
                         .foregroundColor(Theme.textFaint)
                 }
             }
             .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var displayedMbps: Double {
+        model.speedTesting ? model.speedProgress.instantaneousMbps : model.lastSpeed.downloadMbps
+    }
+
+    private var displayedAverageMbps: Double {
+        if model.speedTesting { return model.speedProgress.averageMbps }
+        return model.lastSpeed.downloadMbps
+    }
+
+    private var speedStageText: String {
+        switch model.speedProgress.phase {
+        case .idle: return L10n.t("sp.stage.ready")
+        case .warmingUp: return L10n.t("sp.stage.warmup")
+        case .preparing: return L10n.t("sp.stage.preparing")
+        case .measuring: return L10n.t("sp.stage.measuring")
+        case .retrying: return L10n.t("sp.stage.retrying")
+        case .completed: return L10n.t("sp.stage.complete")
+        case .failed: return L10n.t("sp.stage.failed")
         }
     }
 
@@ -135,10 +209,10 @@ struct ThroughputView: View {
                            color: Theme.purple,
                            suffix: model.wifi.txRate.map { Fmt.mbps($0) } ?? L10n.t("dash"))
                 compareRow(label: L10n.t("sp.cmp.real"),
-                           value: model.lastSpeed.downloadMbps,
+                           value: displayedAverageMbps,
                            maxV: maxValue,
                            color: Theme.cyan,
-                           suffix: model.lastSpeed.downloadMbps > 0 ? Fmt.mbps(model.lastSpeed.downloadMbps) : L10n.t("sp.notested"))
+                           suffix: displayedAverageMbps > 0 ? Fmt.mbps(displayedAverageMbps) : L10n.t("sp.notested"))
                 compareRow(label: L10n.t("sp.cmp.now"),
                            value: (model.totalRateIn + model.totalRateOut) * 8 / 1_000_000,
                            maxV: maxValue,
@@ -169,7 +243,7 @@ struct ThroughputView: View {
 
     private var maxValue: Double {
         max(model.wifi.txRate ?? 0,
-            max(model.lastSpeed.downloadMbps,
+            max(displayedAverageMbps,
                 (model.totalRateIn + model.totalRateOut) * 8 / 1_000_000) * 1.15, 10)
     }
 
@@ -215,8 +289,6 @@ struct ThroughputView: View {
 
     private func runSpeedTest() async {
         guard let coordinator = model.coordinator else { return }
-        model.speedTesting = true
         await coordinator.runSpeedTest()
-        model.speedTesting = false
     }
 }

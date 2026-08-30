@@ -29,11 +29,13 @@ NetPulse does not require `sudo`, create an account, or install a background ser
 | Overview | Health score, likely root cause, gateway, active DNS, proxy and VPN state, public egress, and Wi-Fi status |
 | Connections | Per-process traffic, active remote endpoints, cumulative transfer totals, and local listening ports |
 | Wi-Fi link | RSSI, noise, SNR, negotiated rate, channel width, MCS, PHY mode, nearby channel use, and latency history |
-| Speed | Cloudflare download test alongside negotiated Wi-Fi rate and whole-system traffic |
+| Speed | Cloudflare download test with an animated instantaneous-speed needle, live curve, running average, peak, progress, and Wi-Fi link comparison |
 | Diagnose | DNS, TCP, TLS, time to first byte, and download timing for a URL, plus DNS comparison and a hop-by-hop network path |
 | Menu bar | Signal strength, link rate, current-channel congestion, gateway and DNS latency, and network status |
 
-The menu bar panel takes a lightweight snapshot every 30 seconds and refreshes immediately when opened. It can be shown or hidden from the gear menu in the main window or from NetPulse Settings.
+![NetPulse live speed test](docs/speed.png)
+
+The menu bar uses a text-free NetPulse pulse icon whose full color follows the latest network-health score. Its pulse highlight animates locally without increasing network activity. The panel takes a lightweight snapshot every 30 seconds and refreshes immediately when opened. It can be shown or hidden from the gear menu in the main window or from NetPulse Settings.
 
 ![NetPulse menu bar panel](docs/menu-bar.png)
 
@@ -49,7 +51,7 @@ The following features make network requests:
 | --- | --- | --- |
 | Connectivity and latency checks | While NetPulse is running | The current gateway, active DNS server, `1.1.1.1`, and `8.8.8.8` |
 | Public egress lookup | At launch and about every five minutes | Cloudflare trace and `ipinfo.io` |
-| Download speed test | Only when requested | Cloudflare's speed test endpoint; normally about 8–28 MB including warm-up |
+| Download speed test | Only when requested | Cloudflare's speed test endpoint; normally about 10–100 MB including warm-up |
 | Website diagnosis | Only when requested | The URL entered by the user, the system resolver, `1.1.1.1`, `8.8.8.8`, and bounded traceroute probes toward the entered host |
 
 Process names, network addresses, SSIDs, and public IP details can be sensitive. Review and redact screenshots or logs before posting them. See [Privacy](docs/PRIVACY.md) for the full data-flow summary.

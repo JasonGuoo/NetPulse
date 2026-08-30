@@ -172,6 +172,28 @@ struct RouteTraceResult: Equatable {
     var measuredAt = Date()
 }
 
+enum SpeedTestPhase: Equatable {
+    case idle
+    case warmingUp
+    case preparing
+    case measuring
+    case retrying
+    case completed
+    case failed
+}
+
+struct SpeedTestProgress: Equatable {
+    var phase: SpeedTestPhase = .idle
+    var instantaneousMbps: Double = 0
+    var averageMbps: Double = 0
+    var peakMbps: Double = 0
+    var fraction: Double = 0
+    var elapsed: Double = 0
+    var receivedBytes: Int64 = 0
+    var targetBytes: Int64 = 0
+    var samples: [Double] = []
+}
+
 struct SpeedResult {
     var downloadMbps: Double = 0
     var uploadMbps: Double = 0

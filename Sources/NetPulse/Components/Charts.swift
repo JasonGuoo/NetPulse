@@ -314,43 +314,161 @@ struct Line: Shape {
 
 struct SpeedGauge: View {
     let mbps: Double
-    var reference: Double = 0    // 协商速率参考线
+    var averageMbps: Double = 0
+    var peakMbps: Double = 0
+    var reference: Double = 0
+    var testing = false
+    var stageText = ""
     var untestedText: String = "—"
 
-    private var fraction: Double { min(mbps / max(reference * 1.1, 100), 1) }
+    private var scaleMax: Double {
+        let observed = max(mbps, peakMbps, averageMbps)
+        let candidates: [Double] = [10, 25, 50, 100, 250, 500, 1_000, 2_000, 5_000, 10_000]
+        return candidates.first(where: { $0 >= max(observed * 1.2, 10) }) ?? 10_000
+    }
+
+    private var fraction: Double { min(max(mbps / scaleMax, 0), 1) }
 
     var body: some View {
-        ZStack {
-            // 轨道
-            Circle()
-                .trim(from: 0, to: 0.75)
-                .stroke(Theme.purple.opacity(0.16),
-                        style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                .rotationEffect(.degrees(135))
-            // 参考线（协商速率）
-            if reference > 0 {
+        GeometryReader { geometry in
+            let side = min(geometry.size.width, geometry.size.height)
+            let radius = side * 0.43
+            ZStack {
                 Circle()
-                    .trim(from: min(reference / max(reference * 1.1, 100) * 0.75, 0.749),
-                          to: min(reference / max(reference * 1.1, 100) * 0.75 + 0.006, 0.75))
-                    .stroke(Theme.yellow.opacity(0.8), lineWidth: 10)
+                    .trim(from: 0, to: 0.75)
+                    .stroke(Theme.purple.opacity(0.14),
+                            style: StrokeStyle(lineWidth: 11, lineCap: .round))
                     .rotationEffect(.degrees(135))
+
+                Circle()
+                    .trim(from: 0, to: 0.75 * fraction)
+                    .stroke(Theme.accentAngular,
+                            style: StrokeStyle(lineWidth: 11, lineCap: .round))
+                    .rotationEffect(.degrees(135))
+                    .shadow(color: Theme.cyan.opacity(testing ? 0.42 : 0.24), radius: testing ? 7 : 4)
+
+                ForEach(0..<17, id: \.self) { index in
+                    Capsule()
+                        .fill(index % 4 == 0 ? Theme.textSecondary : Theme.textFaint.opacity(0.7))
+                        .frame(width: index % 4 == 0 ? 1.4 : 0.8,
+                               height: index % 4 == 0 ? 8 : 4)
+                        .offset(y: -radius + 12)
+                        .rotationEffect(.degrees(135 + Double(index) / 16 * 270))
+                }
+
+                ForEach(0..<5, id: \.self) { index in
+                    let angle = (135 + Double(index) / 4 * 270) * .pi / 180
+                    let labelRadius = radius - 30
+                    Text(scaleLabel(scaleMax * Double(index) / 4))
+                        .font(Theme.mono(8.5, .medium))
+                        .foregroundColor(Theme.textFaint)
+                        .position(
+                            x: geometry.size.width / 2 + Foundation.cos(angle) * labelRadius,
+                            y: geometry.size.height / 2 + Foundation.sin(angle) * labelRadius
+                        )
+                }
+
+                Capsule()
+                    .fill(LinearGradient(colors: [Theme.cyan, Theme.purple], startPoint: .top, endPoint: .bottom))
+                    .frame(width: 3.5, height: radius * 0.62)
+                    .offset(y: -radius * 0.31)
+                    .rotationEffect(.degrees(225 + fraction * 270))
+                    .shadow(color: Theme.cyan.opacity(0.65), radius: 4)
+
+                Circle()
+                    .fill(Theme.panelRaised)
+                    .frame(width: 18, height: 18)
+                    .overlay(Circle().fill(Theme.cyan).frame(width: 7, height: 7))
+                    .overlay(Circle().strokeBorder(Theme.cyan.opacity(0.45), lineWidth: 1))
+
+                VStack(spacing: 1) {
+                    HStack(alignment: .firstTextBaseline, spacing: 5) {
+                        Text(mbps > 0 ? String(format: "%.1f", mbps) : untestedText)
+                            .font(Theme.mono(mbps > 0 ? 28 : 18, .semibold))
+                            .monospacedDigit()
+                            .foregroundColor(mbps > 0 ? Theme.cyan : Theme.textPrimary)
+                        if mbps > 0 {
+                            Text("Mbps")
+                                .font(Theme.mono(10, .medium))
+                                .foregroundColor(Theme.cyan.opacity(0.72))
+                        }
+                    }
+                    if testing || mbps > 0 {
+                        Text(stageText)
+                            .font(.system(size: 9.5, weight: .medium))
+                            .foregroundColor(testing ? Theme.textSecondary : Theme.textFaint)
+                    }
+                    if reference > 0 {
+                        Text(L10n.tf("sp.negotiated", Fmt.mbps(reference)))
+                            .font(Theme.mono(8.5))
+                            .foregroundColor(Theme.textFaint.opacity(0.8))
+                    }
+                }
+                .offset(y: radius * 0.5)
             }
-            // 实测
-            Circle()
-                .trim(from: 0, to: 0.75 * fraction)
-                .stroke(Theme.accentAngular,
-                        style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                .rotationEffect(.degrees(135))
-                .shadow(color: Theme.cyan.opacity(0.22), radius: 4)
-            VStack(spacing: 3) {
-                Text(mbps > 0 ? Fmt.mbps(mbps) : untestedText)
-                    .font(Theme.mono(mbps > 0 ? 26 : 19, .semibold))
-                    .foregroundColor(mbps > 0 ? Theme.cyan : Theme.textPrimary)
-                Text(reference > 0 ? L10n.tf("sp.negotiated", Fmt.mbps(reference)) : "")
-                    .font(Theme.mono(9.5))
-                    .foregroundColor(Theme.textSecondary)
-            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
         }
-        .animation(.spring(response: 0.7, dampingFraction: 0.85), value: mbps)
+        .animation(.spring(response: 0.38, dampingFraction: 0.78), value: mbps)
+    }
+
+    private func scaleLabel(_ value: Double) -> String {
+        if value >= 1_000 { return String(format: "%.1fk", value / 1_000) }
+        return String(format: "%.0f", value)
+    }
+}
+
+struct LiveSpeedChart: View {
+    let values: [Double]
+    var color: Color = Theme.cyan
+
+    private var scaleMax: Double {
+        let peak = values.max() ?? 0
+        let candidates: [Double] = [10, 25, 50, 100, 250, 500, 1_000, 2_000, 5_000, 10_000]
+        return candidates.first(where: { $0 >= max(peak * 1.15, 10) }) ?? 10_000
+    }
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Canvas { context, size in
+                for row in 0...3 {
+                    let y = CGFloat(row) / 3 * size.height
+                    var grid = Path()
+                    grid.move(to: CGPoint(x: 0, y: y))
+                    grid.addLine(to: CGPoint(x: size.width, y: y))
+                    context.stroke(grid, with: .color(Theme.hairline), style: StrokeStyle(lineWidth: 0.7, dash: [3, 4]))
+                }
+
+                guard values.count > 1 else { return }
+                let inset: CGFloat = 3
+                func point(_ index: Int) -> CGPoint {
+                    CGPoint(
+                        x: CGFloat(index) / CGFloat(max(values.count - 1, 1)) * size.width,
+                        y: inset + (1 - CGFloat(min(max(values[index] / scaleMax, 0), 1))) * (size.height - inset * 2)
+                    )
+                }
+
+                var line = Path()
+                line.move(to: point(0))
+                for index in 1..<values.count { line.addLine(to: point(index)) }
+
+                var area = line
+                area.addLine(to: CGPoint(x: size.width, y: size.height))
+                area.addLine(to: CGPoint(x: 0, y: size.height))
+                area.closeSubpath()
+                context.fill(area, with: .linearGradient(
+                    Gradient(colors: [color.opacity(0.3), color.opacity(0.015)]),
+                    startPoint: .zero,
+                    endPoint: CGPoint(x: 0, y: size.height)
+                ))
+                context.stroke(line, with: .color(color), style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+                let last = point(values.count - 1)
+                context.fill(Path(ellipseIn: CGRect(x: last.x - 3, y: last.y - 3, width: 6, height: 6)), with: .color(color))
+            }
+            Text(Fmt.mbps(scaleMax))
+                .font(Theme.mono(8.5))
+                .foregroundColor(Theme.textFaint)
+                .padding(.horizontal, 4)
+                .background(Theme.panel.opacity(0.72))
+        }
     }
 }

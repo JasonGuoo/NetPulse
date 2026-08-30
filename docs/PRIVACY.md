@@ -40,7 +40,7 @@ Those providers receive the public IP address and the standard metadata carried 
 
 ## Requests started by the user
 
-- A speed test downloads data from `https://speed.cloudflare.com`. A normal run uses a 3 MB warm-up and a 5–25 MB measurement. A failed measurement can retry with a smaller transfer.
+- A speed test downloads data from `https://speed.cloudflare.com`. A normal run uses a 1 MB warm-up and an adaptive 10–100 MB measurement. A failed measurement can retry with a smaller transfer.
 - A website diagnosis requests the URL entered by the user with an ephemeral URL session. It also queries the system resolver, `1.1.1.1`, and `8.8.8.8` for the target hostname.
 - The same action starts one bounded UDP traceroute toward that hostname. It sends one probe per hop, stops after the destination or 20 hops, and waits at most one second for each hop. It does not perform reverse-DNS lookups for intermediate addresses.
 

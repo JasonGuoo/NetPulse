@@ -7,11 +7,14 @@ This file records user-visible changes to NetPulse.
 ### Added
 
 - Added on-demand hop-by-hop route tracing to website diagnosis, with bounded probes, silent-hop handling, destination status, and an active-VPN notice.
+- Added a native animated speedometer with a real rolling-window needle, live speed curve, running average, peak, stage, and transfer progress.
+- Added a text-free animated NetPulse status icon whose full color reflects the latest network-health score.
 
 ### Changed
 
 - Reorganized the README into separate sections for end users and developers.
 - Adopted the MIT License for the current source tree so copies and substantial portions must retain the original copyright and permission notice.
+- Extended the adaptive download measurement to 10–100 MB so fast connections have a visible and more stable sampling window.
 
 ## [1.0.0-beta.4] - 2026-08-30
 

@@ -18,7 +18,7 @@ NetPulse is a single Swift Package Manager executable that builds a native Swift
 | `Core/DnsBench.swift` | System, Cloudflare, and Google resolver comparison |
 | `Core/HttpTiming.swift` | URLSession task-metric breakdown for DNS, TCP, TLS, first byte, and download |
 | `Core/RouteTracer.swift` | Bounded macOS traceroute execution and hop-output parsing |
-| `Core/SpeedTest.swift` | User-triggered Cloudflare download measurement |
+| `Core/SpeedTest.swift` | User-triggered Cloudflare download measurement with rolling-window instantaneous samples |
 | `Core/Diagnoser.swift` | Rule-based health and root-cause verdicts |
 | `L10n.swift` | Runtime localization tables and language preference |
 | `Components/` | Shared cards, charts, and channel visualization |
@@ -61,7 +61,9 @@ Collectors parse system output into value types before updating `AppModel`. View
 | Overview verdicts | 5 seconds after initial data is available |
 | Menu bar snapshot | 30 seconds and whenever the panel opens |
 
-Speed tests and website diagnostics run only after a user action. A route trace is part of a website diagnosis and runs concurrently with HTTP and DNS measurements. It is limited to 20 hops, one UDP probe per hop, and a one-second response wait per hop.
+Speed tests and website diagnostics run only after a user action. Speed tests use a 1 MB warm-up to size a 10–100 MB measurement; the UI receives a rolling instantaneous rate about eight times per second while the final result uses the full-stage average. A route trace is part of a website diagnosis and runs concurrently with HTTP and DNS measurements. It is limited to 20 hops, one UDP probe per hop, and a one-second response wait per hop.
+
+The status item animates only the highlight traveling along the NetPulse pulse trace. Its health color and metrics come from the existing 30-second snapshot, so animation does not add collector work or network traffic.
 
 ## Concurrency and lifecycle
 
@@ -77,7 +79,7 @@ The score is intentionally conservative when one part of the path is clearly deg
 
 ## Testing
 
-`Tests/NetPulseTests` covers parsers, traceroute output, channel planning, formatting, URL normalization, HTTP metric construction, IP-provider matching, and diagnostic rules. Parser fixtures use synthetic or documentation-only addresses so test output can be shared safely.
+`Tests/NetPulseTests` covers parsers, traceroute output, instantaneous-speed estimation, status-icon rendering, channel planning, formatting, URL normalization, HTTP metric construction, IP-provider matching, and diagnostic rules. Parser fixtures use synthetic or documentation-only addresses so test output can be shared safely.
 
 UI work can be checked with `--selftest-png`, `--selftest-menubar-png`, and `--selftest-settings-png`, which render deterministic sample data without requiring screen-recording permission. The diagnose-tab self-test includes a synthetic multi-hop path. `--probe` exercises live collectors without opening the main window.
 

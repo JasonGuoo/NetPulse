@@ -8,6 +8,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var statusPopover: NSPopover?
     private var statusTimer: Timer?
+    private var statusAnimationTimer: Timer?
+    private var statusIconPhase: Double = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let lang = ProcessInfo.processInfo.environment["NETPULSE_LANG"],
@@ -103,6 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         statusTimer?.invalidate()
+        statusAnimationTimer?.invalidate()
         NotificationCenter.default.removeObserver(self)
         model.stop()
     }
@@ -115,10 +118,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = item.button {
-            button.imagePosition = .imageLeading
-            button.font = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+            button.imagePosition = .imageOnly
+            button.imageScaling = .scaleProportionallyDown
+            button.title = ""
             button.target = self
             button.action = #selector(toggleStatusPopover(_:))
             button.sendAction(on: [.leftMouseUp])
@@ -146,11 +150,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         RunLoop.main.add(timer, forMode: .common)
         statusTimer = timer
+
+        let animationTimer = Timer(timeInterval: 0.16, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            statusIconPhase = (statusIconPhase + 0.075).truncatingRemainder(dividingBy: 1)
+            refreshStatusIcon()
+        }
+        RunLoop.main.add(animationTimer, forMode: .common)
+        statusAnimationTimer = animationTimer
     }
 
     private func removeStatusItem() {
         statusTimer?.invalidate()
         statusTimer = nil
+        statusAnimationTimer?.invalidate()
+        statusAnimationTimer = nil
         statusPopover?.performClose(nil)
         statusPopover = nil
         if let statusItem {
@@ -173,19 +187,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func refreshStatusButton() {
         guard let button = statusItem?.button else { return }
-        let signal = menuBarSnapshot.rssi.map { "\($0) dBm" } ?? "—"
-        let symbolName = menuBarSnapshot.wifiConnected ? "wifi" : "wifi.slash"
-        let symbolConfig = NSImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
-        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "NetPulse")?
-            .withSymbolConfiguration(symbolConfig)
-        image?.isTemplate = true
-
-        button.image = image
-        button.title = "  \(signal)"
-        button.contentTintColor = menuBarSnapshot.wifiConnected
-            ? NSColor(Theme.green)
-            : NSColor.secondaryLabelColor
+        refreshStatusIcon()
+        button.title = ""
+        button.contentTintColor = nil
+        button.setAccessibilityLabel("NetPulse, \(QualityForScore.label(menuBarSnapshot.healthScore))")
         button.toolTip = "NetPulse \(L10n.t("menu.running"))"
+    }
+
+    private func refreshStatusIcon() {
+        statusItem?.button?.image = Self.renderStatusItemIcon(
+            score: menuBarSnapshot.healthScore,
+            connected: menuBarSnapshot.wifiConnected,
+            phase: statusIconPhase
+        )
     }
 
     private func refreshMenuBarSnapshot() {
@@ -225,6 +239,88 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func installAppIcon() {
         NSApplication.shared.applicationIconImage = Self.renderIcon(size: 512)
+    }
+
+    static func statusItemQualityColor(score: Int, connected: Bool) -> NSColor {
+        guard connected else { return NSColor(Theme.red) }
+        if score >= 85 { return NSColor(Theme.green) }
+        if score >= 70 { return NSColor(Theme.cyan) }
+        if score >= 50 { return NSColor(Theme.yellow) }
+        return NSColor(Theme.red)
+    }
+
+    /// Compact, transparent NetPulse glyph for the macOS status bar.
+    /// The moving highlight follows the pulse trace; its color reflects the latest health snapshot.
+    static func renderStatusItemIcon(score: Int, connected: Bool, phase: Double) -> NSImage {
+        let size = NSSize(width: 22, height: 18)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        guard let context = NSGraphicsContext.current?.cgContext else {
+            image.unlockFocus()
+            return image
+        }
+
+        context.clear(CGRect(origin: .zero, size: size))
+        let quality = statusItemQualityColor(score: score, connected: connected)
+
+        let outline = CGPath(
+            roundedRect: CGRect(x: 1.4, y: 1.2, width: 19.2, height: 15.6),
+            cornerWidth: 4.1,
+            cornerHeight: 4.1,
+            transform: nil
+        )
+        context.addPath(outline)
+        context.setStrokeColor(quality.withAlphaComponent(0.32).cgColor)
+        context.setLineWidth(0.85)
+        context.strokePath()
+
+        context.setLineCap(.round)
+        context.setStrokeColor(quality.withAlphaComponent(0.72).cgColor)
+        for (radius, lineWidth) in [(5.4, 1.25), (3.2, 1.45)] {
+            context.addArc(
+                center: CGPoint(x: 11, y: 9.8),
+                radius: radius,
+                startAngle: 38 * .pi / 180,
+                endAngle: 142 * .pi / 180,
+                clockwise: false
+            )
+            context.setLineWidth(lineWidth)
+            context.strokePath()
+        }
+        context.setFillColor(quality.withAlphaComponent(0.85).cgColor)
+        context.fillEllipse(in: CGRect(x: 10.2, y: 6.2, width: 1.6, height: 1.6))
+
+        let pulse = CGMutablePath()
+        pulse.move(to: CGPoint(x: 3, y: 4.4))
+        pulse.addLine(to: CGPoint(x: 6.2, y: 4.4))
+        pulse.addLine(to: CGPoint(x: 7.7, y: 3.8))
+        pulse.addLine(to: CGPoint(x: 9.1, y: 6.6))
+        pulse.addLine(to: CGPoint(x: 10.2, y: 2.2))
+        pulse.addLine(to: CGPoint(x: 11.7, y: 5.1))
+        pulse.addLine(to: CGPoint(x: 13.1, y: 4.4))
+        pulse.addLine(to: CGPoint(x: 15.6, y: 4.4))
+        pulse.addLine(to: CGPoint(x: 17.1, y: 3.7))
+        pulse.addLine(to: CGPoint(x: 19, y: 4.4))
+
+        context.addPath(pulse)
+        context.setStrokeColor(quality.withAlphaComponent(0.58).cgColor)
+        context.setLineWidth(1.05)
+        context.strokePath()
+
+        let normalizedPhase = phase - Foundation.floor(phase)
+        let highlightX = -3 + normalizedPhase * 28
+        context.saveGState()
+        context.clip(to: CGRect(x: highlightX, y: 1.5, width: 5.5, height: 6.5))
+        context.addPath(pulse)
+        context.setStrokeColor(quality.cgColor)
+        context.setLineWidth(1.65)
+        context.setShadow(offset: .zero, blur: 2.5, color: quality.withAlphaComponent(0.9).cgColor)
+        context.strokePath()
+        context.restoreGState()
+
+        image.unlockFocus()
+        image.isTemplate = false
+        return image
     }
 
     private static func sourceIcon() -> NSImage? {
@@ -444,10 +540,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.lastSpeed = SpeedResult(
                 downloadMbps: 423.6,
                 uploadMbps: 0,
-                bytes: 52_428_800,
-                seconds: 1.0,
+                bytes: 100_000_000,
+                seconds: 5.8,
                 measuredAt: Date(),
                 errorNote: nil
+            )
+            let speedSamples = (0..<42).map { index in
+                let ramp = min(Double(index) / 12, 1)
+                let wave = 1 + 0.08 * sin(Double(index) * 0.72) + 0.035 * cos(Double(index) * 1.61)
+                return max(0, 423.6 * ramp * wave)
+            }
+            model.speedProgress = SpeedTestProgress(
+                phase: .completed,
+                instantaneousMbps: 423.6,
+                averageMbps: 423.6,
+                peakMbps: speedSamples.max() ?? 423.6,
+                fraction: 1,
+                elapsed: 5.8,
+                receivedBytes: 100_000_000,
+                targetBytes: 100_000_000,
+                samples: speedSamples
             )
             model.lastTiming = HttpTimingResult(
                 url: "https://www.apple.com",
@@ -649,7 +761,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if model.lastSpeed.measuredAt != nil {
             lines.append("=== 测速 ===")
-            lines.append("download=\(String(format: "%.1f Mbps", model.lastSpeed.downloadMbps)) bytes=\(Fmt.bytes(Double(model.lastSpeed.bytes))) secs=\(String(format: "%.1f", model.lastSpeed.seconds))")
+            lines.append("download=\(String(format: "%.1f Mbps", model.lastSpeed.downloadMbps)) peak=\(String(format: "%.1f Mbps", model.speedProgress.peakMbps)) samples=\(model.speedProgress.samples.count) bytes=\(Fmt.bytes(Double(model.lastSpeed.bytes))) secs=\(String(format: "%.1f", model.lastSpeed.seconds))")
             if let note = model.lastSpeed.errorNote {
                 lines.append("note=\(note)")
             }

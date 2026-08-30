@@ -1,43 +1,76 @@
 import Foundation
 
-/// 下载吞吐测速：Cloudflare __down 端点，流式统计字节/时间
-/// 端点限制：过大请求（>25MB）与短时密集请求会返回 403，
-/// 因此按预热带宽自适应 5~25MB，且失败时降档重试
+/// Download throughput test using Cloudflare's public __down endpoint.
+/// A small warm-up sizes a longer 10-100 MB measurement, while a rolling byte
+/// window produces real instantaneous readings for the native speedometer.
 enum SpeedTest {
 
-    static func run(onUpdate: @escaping (Double, Double) -> Void) async -> SpeedResult {
-        // 预热：小文件（建立连接 + 粗测带宽）
-        let warm = await download(bytes: 3_000_000, capSeconds: 4) { _, _ in }
+    static func run(onUpdate: @escaping (SpeedTestProgress) -> Void) async -> SpeedResult {
+        onUpdate(SpeedTestProgress(phase: .warmingUp, targetBytes: 1_000_000))
+        let warm = await download(bytes: 1_000_000, capSeconds: 3) { sample in
+            onUpdate(progress(from: sample, phase: .warmingUp, overallFraction: sample.fraction * 0.16))
+        }
 
-        // 给端点留出节奏，避免连续请求触发风控
-        try? await Task.sleep(nanoseconds: 1_800_000_000)
+        onUpdate(SpeedTestProgress(
+            phase: .preparing,
+            averageMbps: warm.downloadMbps,
+            peakMbps: warm.downloadMbps,
+            fraction: 0.18,
+            elapsed: warm.seconds,
+            receivedBytes: warm.bytes,
+            targetBytes: warm.bytes
+        ))
+        try? await Task.sleep(nanoseconds: 1_200_000_000)
 
-        // 按预热速率选择正式测速体积：目标约 8 秒跑完，夹在 5~25MB
+        // Aim for roughly six seconds and cap data use at 100 MB.
         let warmBps = warm.seconds > 0 ? Double(warm.bytes) / warm.seconds : 500_000
-        var size: Int64 = Int64(warmBps * 8.0)
-        size = max(5_000_000, min(size, 25_000_000))
+        var size = Int64(warmBps * 6.0)
+        size = max(10_000_000, min(size, 100_000_000))
 
-        // 最多两轮：失败（字节异常少）则降档重来
-        var result = await download(bytes: size, capSeconds: 14) { mbps, _ in
-            Task { @MainActor in
-                onUpdate(mbps, 0)
-            }
+        onUpdate(SpeedTestProgress(phase: .measuring, fraction: 0.2, targetBytes: size))
+        var result = await download(bytes: size, capSeconds: 14) { sample in
+            onUpdate(progress(
+                from: sample,
+                phase: .measuring,
+                overallFraction: 0.2 + sample.fraction * 0.8
+            ))
         }
         if result.bytes < 10_000 {
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            result = await download(bytes: max(5_000_000, size / 4), capSeconds: 14) { mbps, _ in
-                Task { @MainActor in
-                    onUpdate(mbps, 0)
-                }
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            let retrySize = max(10_000_000, size / 4)
+            onUpdate(SpeedTestProgress(phase: .retrying, fraction: 0.2, targetBytes: retrySize))
+            result = await download(bytes: retrySize, capSeconds: 14) { sample in
+                onUpdate(progress(
+                    from: sample,
+                    phase: .retrying,
+                    overallFraction: 0.2 + sample.fraction * 0.8
+                ))
             }
         }
         return result
     }
 
+    private static func progress(
+        from sample: SpeedTransferSample,
+        phase: SpeedTestPhase,
+        overallFraction: Double
+    ) -> SpeedTestProgress {
+        SpeedTestProgress(
+            phase: phase,
+            instantaneousMbps: sample.instantaneousMbps,
+            averageMbps: sample.averageMbps,
+            peakMbps: sample.peakMbps,
+            fraction: min(max(overallFraction, 0), 1),
+            elapsed: sample.elapsed,
+            receivedBytes: sample.bytes,
+            targetBytes: sample.targetBytes
+        )
+    }
+
     private static func download(bytes: Int64, capSeconds: Double,
-                                 onProgress: @escaping (Double, Double) -> Void) async -> SpeedResult {
+                                 onProgress: @escaping (SpeedTransferSample) -> Void) async -> SpeedResult {
         await withCheckedContinuation { (cont: CheckedContinuation<SpeedResult, Never>) in
-            let counter = ByteCounter(capSeconds: capSeconds) { result, liveMbps in
+            let counter = ByteCounter(targetBytes: bytes, capSeconds: capSeconds) { result in
                 cont.resume(returning: result)
             }
             counter.onProgress = onProgress
@@ -59,18 +92,72 @@ enum SpeedTest {
     }
 }
 
+struct SpeedTransferSample: Equatable {
+    let instantaneousMbps: Double
+    let averageMbps: Double
+    let peakMbps: Double
+    let elapsed: Double
+    let bytes: Int64
+    let targetBytes: Int64
+
+    var fraction: Double {
+        guard targetBytes > 0 else { return 0 }
+        return min(Double(bytes) / Double(targetBytes), 1)
+    }
+}
+
+struct SpeedWindowEstimator {
+    private(set) var lastElapsed: Double = 0
+    private(set) var lastBytes: Int64 = 0
+    private(set) var smoothedMbps: Double = 0
+    private(set) var peakMbps: Double = 0
+
+    mutating func sample(
+        totalBytes: Int64,
+        targetBytes: Int64,
+        elapsed: Double,
+        force: Bool = false
+    ) -> SpeedTransferSample? {
+        let interval = elapsed - lastElapsed
+        guard force || interval >= 0.12 else { return nil }
+
+        let byteDelta = totalBytes - lastBytes
+        let averageMbps = elapsed > 0.05 ? Double(totalBytes) * 8 / elapsed / 1_000_000 : 0
+        let rawMbps = interval >= 0.08 ? Double(byteDelta) * 8 / interval / 1_000_000 : 0
+        if smoothedMbps == 0 {
+            smoothedMbps = rawMbps > 0 ? rawMbps : averageMbps
+        } else if rawMbps > 0 {
+            smoothedMbps = smoothedMbps * 0.62 + rawMbps * 0.38
+        }
+        peakMbps = max(peakMbps, smoothedMbps)
+        lastElapsed = elapsed
+        lastBytes = totalBytes
+
+        return SpeedTransferSample(
+            instantaneousMbps: smoothedMbps,
+            averageMbps: averageMbps,
+            peakMbps: peakMbps,
+            elapsed: elapsed,
+            bytes: totalBytes,
+            targetBytes: targetBytes
+        )
+    }
+}
+
 final class ByteCounter: NSObject, URLSessionDataDelegate {
+    private let targetBytes: Int64
     private let capSeconds: Double
-    private let completion: (SpeedResult, Double) -> Void
+    private let completion: (SpeedResult) -> Void
     private var bytes: Int64 = 0
     private var started: Date?
     private var finished = false
-    var onProgress: ((Double, Double) -> Void)?
+    var onProgress: ((SpeedTransferSample) -> Void)?
     var task: URLSessionDataTask?
-    private var lastReport = Date.distantPast
+    private var estimator = SpeedWindowEstimator()
     private var debugLog: [String] = []
 
-    init(capSeconds: Double, completion: @escaping (SpeedResult, Double) -> Void) {
+    init(targetBytes: Int64, capSeconds: Double, completion: @escaping (SpeedResult) -> Void) {
+        self.targetBytes = targetBytes
         self.capSeconds = capSeconds
         self.completion = completion
         super.init()
@@ -80,21 +167,22 @@ final class ByteCounter: NSObject, URLSessionDataDelegate {
         started.map { Date().timeIntervalSince($0) } ?? 0
     }
 
-    private var liveMbps: Double {
-        guard elapsed > 0.3 else { return 0 }
-        return Double(bytes) * 8 / elapsed / 1_000_000
-    }
-
-    private func report() {
-        guard Date().timeIntervalSince(lastReport) > 0.25, elapsed > 0.3 else { return }
-        lastReport = Date()
-        onProgress?(liveMbps, elapsed)
+    private func report(force: Bool = false) {
+        guard started != nil,
+              let sample = estimator.sample(
+                totalBytes: bytes,
+                targetBytes: targetBytes,
+                elapsed: elapsed,
+                force: force
+              ) else { return }
+        onProgress?(sample)
     }
 
     private func finish(cancel: Bool) {
         guard !finished else { return }
         finished = true
         if cancel { task?.cancel() }
+        report(force: true)
         let secs = max(elapsed, 0.001)
         var r = SpeedResult()
         r.bytes = bytes
@@ -104,7 +192,7 @@ final class ByteCounter: NSObject, URLSessionDataDelegate {
         if bytes < 10_000 {
             r.errorNote = debugLog.joined(separator: " | ")
         }
-        completion(r, liveMbps)
+        completion(r)
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
