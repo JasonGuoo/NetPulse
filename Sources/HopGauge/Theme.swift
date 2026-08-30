@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - NetPulse design tokens
+// MARK: - HopGauge design tokens
 
 enum Theme {
     static let bgTop = Color(hex: 0x07101C)

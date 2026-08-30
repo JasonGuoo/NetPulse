@@ -5,8 +5,8 @@ struct DiagnoseView: View {
     @EnvironmentObject var model: AppModel
     @ObservedObject private var l10n = L10n.shared
     @State private var urlText = ""
-    @AppStorage("netpulse.lastDiagURL") private var lastDiagURL = "https://www.apple.com"
-    @AppStorage("netpulse.recentDiagURLs") private var recentDiagURLs = ""
+    @AppStorage(AppPreferences.lastDiagnosticURLKey) private var lastDiagURL = "https://www.apple.com"
+    @AppStorage(AppPreferences.recentDiagnosticURLsKey) private var recentDiagURLs = ""
 
     private let quickPicks = ["https://www.apple.com", "https://www.baidu.com", "https://www.github.com"]
 

@@ -35,7 +35,7 @@ struct AppSettingsMenu: View {
     }
 }
 
-struct NetPulseSettingsView: View {
+struct HopGaugeSettingsView: View {
     @AppStorage(AppPreferences.menuBarEnabledKey) private var menuBarEnabled = true
     @ObservedObject private var l10n = L10n.shared
 
@@ -50,7 +50,7 @@ struct NetPulseSettingsView: View {
                     Text(L10n.t("settings.title"))
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .foregroundColor(Theme.textPrimary)
-                    Text("NetPulse")
+                    Text("HopGauge")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(Theme.textFaint)
                 }

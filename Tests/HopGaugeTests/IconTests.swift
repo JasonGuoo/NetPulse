@@ -1,11 +1,11 @@
 import AppKit
 import XCTest
-@testable import NetPulse
+@testable import HopGauge
 
 final class IconTests: XCTestCase {
     func testIconsetUsesExpectedPixelSizesAndTransparentCorners() throws {
         let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("NetPulseIconTests-\(UUID().uuidString).iconset")
+            .appendingPathComponent("HopGaugeIconTests-\(UUID().uuidString).iconset")
         defer { try? FileManager.default.removeItem(at: directory) }
 
         AppDelegate.makeIconset(at: directory.path)

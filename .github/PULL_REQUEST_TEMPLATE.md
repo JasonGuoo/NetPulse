@@ -12,7 +12,7 @@ Include before and after images for visible changes. Redact network and account 
 
 ## Checklist
 
-- [ ] The product name is `NetPulse` in all new text and metadata.
+- [ ] The product name is `HopGauge` in all new text and metadata.
 - [ ] `swift test --arch arm64` passes.
 - [ ] The release build and arm64 bundle checks pass when the change affects runtime code or packaging.
 - [ ] Parser or diagnostic changes include tests with sanitized fixtures.

@@ -53,14 +53,14 @@ struct ContentView: View {
         }
         .preferredColorScheme(.dark)
         .frame(minWidth: 1060, minHeight: 700)
-        .onReceive(NotificationCenter.default.publisher(for: .openNetPulseDiagnosis)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .openHopGaugeDiagnosis)) { _ in
             withAnimation(.easeOut(duration: 0.18)) { tab = .diagnose }
         }
     }
 }
 
 extension Notification.Name {
-    static let openNetPulseDiagnosis = Notification.Name("NetPulse.openDiagnosis")
+    static let openHopGaugeDiagnosis = Notification.Name("HopGauge.openDiagnosis")
 }
 
 // MARK: - Compact application toolbar
@@ -84,7 +84,7 @@ struct AppToolbar: View {
                     .interpolation(.high)
                     .frame(width: 30, height: 30)
                     .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                Text("NetPulse")
+                Text("HopGauge")
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundColor(Theme.textPrimary)
             }

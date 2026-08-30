@@ -1,6 +1,6 @@
 # Governance
 
-NetPulse uses a maintainer-led model. The repository owner is responsible for technical direction, reviews, releases, security decisions, and access to project infrastructure.
+HopGauge uses a maintainer-led model. The repository owner is responsible for technical direction, reviews, releases, security decisions, and access to project infrastructure.
 
 ## Decisions
 

@@ -34,7 +34,7 @@ final class L10n: ObservableObject {
 
     @Published var language: AppLanguage {
         didSet {
-            UserDefaults.standard.set(language.rawValue, forKey: "netpulse.language")
+            UserDefaults.standard.set(language.rawValue, forKey: AppPreferences.languageKey)
             lock.lock()
             code = language == .system ? AppLanguage.resolve() : language.rawValue
             lock.unlock()
@@ -51,7 +51,7 @@ final class L10n: ObservableObject {
     }
 
     private init() {
-        let raw = UserDefaults.standard.string(forKey: "netpulse.language") ?? AppLanguage.system.rawValue
+        let raw = UserDefaults.standard.string(forKey: AppPreferences.languageKey) ?? AppLanguage.system.rawValue
         let lang = AppLanguage(rawValue: raw) ?? .system
         code = lang == .system ? AppLanguage.resolve() : lang.rawValue
         language = lang   // init 中 didSet 不触发，code 已先行就绪
@@ -284,13 +284,13 @@ final class L10n: ObservableObject {
         // ping 延迟卡片
         "monitoring": "监测中",
         "menu.running": "正在运行", "menu.network.status": "网络状态",
-        "menu.open": "打开 NetPulse", "menu.quit": "退出",
+        "menu.open": "打开 HopGauge", "menu.quit": "退出",
         "menu.gateway.latency": "网关延迟", "menu.dns.latency": "DNS 延迟",
         "menu.channel.overlap.short": "%@ · %d 个 AP",
         "menu.refresh.interval": "每 30 秒更新",
         "settings.title": "设置", "settings.menubar": "系统菜单栏",
-        "settings.menubar.show": "在菜单栏显示 NetPulse",
-        "settings.menubar.detail": "显示随网络质量变色的动态 NetPulse 图标；点击图标可查看关键指标。",
+        "settings.menubar.show": "在菜单栏显示 HopGauge",
+        "settings.menubar.detail": "显示随网络质量变色的动态 HopGauge 图标；点击图标可查看关键指标。",
         "health.explain": "点击查看评分构成", "health.breakdown": "健康度构成", "health.stability": "稳定性",
         "ov.rootcause": "根因定位", "ov.run.diagnosis": "运行路径诊断", "ov.location": "位置",
         "ov.hero.offline": "未连接到 Wi-Fi", "ov.hero.offline.detail": "请先连接无线网络，再开始链路诊断。",
@@ -513,13 +513,13 @@ final class L10n: ObservableObject {
 
         "monitoring": "Monitoring",
         "menu.running": "is running", "menu.network.status": "Network Status",
-        "menu.open": "Open NetPulse", "menu.quit": "Quit",
+        "menu.open": "Open HopGauge", "menu.quit": "Quit",
         "menu.gateway.latency": "Gateway Latency", "menu.dns.latency": "DNS Latency",
         "menu.channel.overlap.short": "%@ · %d AP",
         "menu.refresh.interval": "Updates every 30 seconds",
         "settings.title": "Settings", "settings.menubar": "Menu Bar",
-        "settings.menubar.show": "Show NetPulse in the menu bar",
-        "settings.menubar.detail": "Shows an animated NetPulse icon colored by network quality. Click it for key metrics.",
+        "settings.menubar.show": "Show HopGauge in the menu bar",
+        "settings.menubar.detail": "Shows an animated HopGauge icon colored by network quality. Click it for key metrics.",
         "health.explain": "Click to see how this score is calculated", "health.breakdown": "Health Breakdown", "health.stability": "Stability",
         "ov.rootcause": "Root Cause", "ov.run.diagnosis": "Run path diagnosis", "ov.location": "Location",
         "ov.hero.offline": "Wi-Fi is not connected", "ov.hero.offline.detail": "Connect to a wireless network before starting link diagnosis.",
@@ -742,13 +742,13 @@ final class L10n: ObservableObject {
 
         "monitoring": "監視中",
         "menu.running": "実行中", "menu.network.status": "ネットワーク状態",
-        "menu.open": "NetPulse を開く", "menu.quit": "終了",
+        "menu.open": "HopGauge を開く", "menu.quit": "終了",
         "menu.gateway.latency": "ゲートウェイ遅延", "menu.dns.latency": "DNS 遅延",
         "menu.channel.overlap.short": "%@ · AP %d 件",
         "menu.refresh.interval": "30 秒ごとに更新",
         "settings.title": "設定", "settings.menubar": "メニューバー",
-        "settings.menubar.show": "メニューバーに NetPulse を表示",
-        "settings.menubar.detail": "ネットワーク品質で色が変わる動的な NetPulse アイコンを表示します。クリックすると主要指標を確認できます。",
+        "settings.menubar.show": "メニューバーに HopGauge を表示",
+        "settings.menubar.detail": "ネットワーク品質で色が変わる動的な HopGauge アイコンを表示します。クリックすると主要指標を確認できます。",
         "health.explain": "クリックしてスコア内訳を表示", "health.breakdown": "ヘルススコア内訳", "health.stability": "安定性",
         "ov.rootcause": "原因の特定", "ov.run.diagnosis": "経路診断を実行", "ov.location": "場所",
         "ov.hero.offline": "Wi-Fi に接続されていません", "ov.hero.offline.detail": "無線ネットワークに接続してから診断を開始してください。",
@@ -971,13 +971,13 @@ final class L10n: ObservableObject {
 
         "monitoring": "모니터링 중",
         "menu.running": "실행 중", "menu.network.status": "네트워크 상태",
-        "menu.open": "NetPulse 열기", "menu.quit": "종료",
+        "menu.open": "HopGauge 열기", "menu.quit": "종료",
         "menu.gateway.latency": "게이트웨이 지연", "menu.dns.latency": "DNS 지연",
         "menu.channel.overlap.short": "%@ · AP %d개",
         "menu.refresh.interval": "30초마다 업데이트",
         "settings.title": "설정", "settings.menubar": "메뉴 막대",
-        "settings.menubar.show": "메뉴 막대에 NetPulse 표시",
-        "settings.menubar.detail": "네트워크 품질에 따라 색이 바뀌는 동적 NetPulse 아이콘을 표시합니다. 클릭하면 주요 지표를 볼 수 있습니다.",
+        "settings.menubar.show": "메뉴 막대에 HopGauge 표시",
+        "settings.menubar.detail": "네트워크 품질에 따라 색이 바뀌는 동적 HopGauge 아이콘을 표시합니다. 클릭하면 주요 지표를 볼 수 있습니다.",
         "health.explain": "클릭하여 점수 구성을 확인", "health.breakdown": "상태 점수 구성", "health.stability": "안정성",
         "ov.rootcause": "원인 분석", "ov.run.diagnosis": "경로 진단 실행", "ov.location": "위치",
         "ov.hero.offline": "Wi-Fi가 연결되지 않았습니다", "ov.hero.offline.detail": "무선 네트워크에 연결한 후 링크 진단을 시작하세요.",

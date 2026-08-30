@@ -1,6 +1,6 @@
-# Contributing to NetPulse
+# Contributing to HopGauge
 
-NetPulse accepts bug fixes, diagnostic improvements, documentation updates, and focused feature work. Open an issue before starting a large change so the scope can be agreed on first.
+HopGauge accepts bug fixes, diagnostic improvements, documentation updates, and focused feature work. Open an issue before starting a large change so the scope can be agreed on first.
 
 ## Before opening an issue
 
@@ -14,18 +14,18 @@ NetPulse accepts bug fixes, diagnostic improvements, documentation updates, and 
 You need an Apple silicon Mac, macOS 14 or later, Xcode Command Line Tools, and Swift 5.10 or later.
 
 ```bash
-git clone https://github.com/JasonGuoo/NetPulse.git
-cd NetPulse
+git clone https://github.com/JasonGuoo/HopGauge.git
+cd HopGauge
 swift test --arch arm64
-swift run NetPulse
+swift run HopGauge
 ```
 
 Create a branch from the latest `main` and keep each pull request focused on one problem.
 
 ## Engineering guidelines
 
-- Use `NetPulse` as the product name in code, documentation, bundle metadata, and user-facing text.
-- Keep system collection and network operations in `Sources/NetPulse/Core`. Views should consume model state instead of launching commands directly.
+- Use `HopGauge` as the product name in code, documentation, bundle metadata, and user-facing text.
+- Keep system collection and network operations in `Sources/HopGauge/Core`. Views should consume model state instead of launching commands directly.
 - Use absolute paths, finite timeouts, and argument arrays for macOS command-line tools.
 - Keep parsers deterministic and cover new output formats with sanitized fixtures.
 - Do not add privileged helpers, `sudo`, packet capture, telemetry, or a remote service without discussing the change first.
@@ -41,16 +41,16 @@ Run these before opening a pull request:
 ```bash
 swift test --arch arm64
 ./scripts/package-release.sh
-codesign --verify --deep --strict build/NetPulse.app
-test "$(lipo -archs build/NetPulse.app/Contents/MacOS/NetPulse)" = "arm64"
+codesign --verify --deep --strict build/HopGauge.app
+test "$(lipo -archs build/HopGauge.app/Contents/MacOS/HopGauge)" = "arm64"
 ```
 
 For a UI change, render the affected views in English and inspect the images:
 
 ```bash
 swift build --arch arm64
-NETPULSE_LANG=en .build/arm64-apple-macosx/debug/NetPulse \
-  --selftest-png /tmp/netpulse-overview.png Overview
+HOPGAUGE_LANG=en .build/arm64-apple-macosx/debug/HopGauge \
+  --selftest-png /tmp/hopgauge-overview.png Overview
 ```
 
 The build path can vary with the installed Swift toolchain. Use `swift build --show-bin-path` if the command above does not match your environment.

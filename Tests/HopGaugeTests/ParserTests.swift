@@ -1,5 +1,5 @@
 import XCTest
-@testable import NetPulse
+@testable import HopGauge
 
 /// 解析器单元测试（样本取自 macOS 15.6 实机输出）
 final class ParserTests: XCTestCase {

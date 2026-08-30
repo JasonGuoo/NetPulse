@@ -181,7 +181,7 @@ struct OverviewView: View {
 
                 SectionRule()
                 Button {
-                    NotificationCenter.default.post(name: .openNetPulseDiagnosis, object: nil)
+                    NotificationCenter.default.post(name: .openHopGaugeDiagnosis, object: nil)
                 } label: {
                     HStack(spacing: 6) {
                         Text(L10n.t("ov.run.diagnosis"))

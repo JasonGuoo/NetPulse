@@ -2,18 +2,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "NetPulse",
+    name: "HopGauge",
     platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(
-            name: "NetPulse",
-            path: "Sources/NetPulse",
+            name: "HopGauge",
+            path: "Sources/HopGauge",
             resources: [.process("Resources")]
         ),
         .testTarget(
-            name: "NetPulseTests",
-            dependencies: ["NetPulse"],
-            path: "Tests/NetPulseTests"
+            name: "HopGaugeTests",
+            dependencies: ["HopGauge"],
+            path: "Tests/HopGaugeTests"
         ),
     ]
 )

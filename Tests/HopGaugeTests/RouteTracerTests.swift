@@ -1,5 +1,5 @@
 import XCTest
-@testable import NetPulse
+@testable import HopGauge
 
 final class RouteTracerTests: XCTestCase {
     func testParsesSilentAndRespondingHops() {

@@ -1,17 +1,21 @@
 # Changelog
 
-This file records user-visible changes to NetPulse.
+This file records user-visible changes to HopGauge.
 
 ## [Unreleased]
+
+## [1.0.0-beta.5] - 2026-08-30
 
 ### Added
 
 - Added on-demand hop-by-hop route tracing to website diagnosis, with bounded probes, silent-hop handling, destination status, and an active-VPN notice.
 - Added a native animated speedometer with a real rolling-window needle, live speed curve, running average, peak, stage, and transfer progress.
-- Added a text-free animated NetPulse status icon whose full color reflects the latest network-health score.
+- Added a text-free animated HopGauge status icon whose full color reflects the latest network-health score.
 
 ### Changed
 
+- Renamed the app, Swift package, executable, bundle identity, artifacts, repository, documentation, and interface to HopGauge.
+- Added a one-time migration for language, menu bar visibility, and recent diagnosis preferences saved by earlier beta builds.
 - Reorganized the README into separate sections for end users and developers.
 - Adopted the MIT License for the current source tree so copies and substantial portions must retain the original copyright and permission notice.
 - Extended the adaptive download measurement to 10–100 MB so fast connections have a visible and more stable sampling window.
@@ -65,8 +69,9 @@ This file records user-visible changes to NetPulse.
 - English, Simplified Chinese, Japanese, and Korean interface languages.
 - Apple silicon app bundle for macOS 14 and later.
 
-[Unreleased]: https://github.com/JasonGuoo/NetPulse/compare/v1.0.0-beta.4...HEAD
-[1.0.0-beta.4]: https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.4
-[1.0.0-beta.3]: https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.3
-[1.0.0-beta.2]: https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.2
-[1.0.0-beta.1]: https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.1
+[Unreleased]: https://github.com/JasonGuoo/HopGauge/compare/v1.0.0-beta.5...HEAD
+[1.0.0-beta.5]: https://github.com/JasonGuoo/HopGauge/releases/tag/v1.0.0-beta.5
+[1.0.0-beta.4]: https://github.com/JasonGuoo/HopGauge/releases/tag/v1.0.0-beta.4
+[1.0.0-beta.3]: https://github.com/JasonGuoo/HopGauge/releases/tag/v1.0.0-beta.3
+[1.0.0-beta.2]: https://github.com/JasonGuoo/HopGauge/releases/tag/v1.0.0-beta.2
+[1.0.0-beta.1]: https://github.com/JasonGuoo/HopGauge/releases/tag/v1.0.0-beta.1

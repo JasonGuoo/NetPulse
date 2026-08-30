@@ -3,24 +3,24 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-RELEASE_VERSION="${NETPULSE_VERSION:-$(tr -d '[:space:]' < VERSION)}"
+RELEASE_VERSION="${HOPGAUGE_VERSION:-$(tr -d '[:space:]' < VERSION)}"
 if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]; then
-    echo "Invalid NetPulse version: $RELEASE_VERSION" >&2
+    echo "Invalid HopGauge version: $RELEASE_VERSION" >&2
     exit 1
 fi
 
-APP="build/NetPulse.app"
-APP_BINARY="$APP/Contents/MacOS/NetPulse"
-ARTIFACT="NetPulse-${RELEASE_VERSION}-macOS-arm64"
+APP="build/HopGauge.app"
+APP_BINARY="$APP/Contents/MacOS/HopGauge"
+ARTIFACT="HopGauge-${RELEASE_VERSION}-macOS-arm64"
 ARCHIVE="build/${ARTIFACT}.zip"
 CHECKSUM="${ARCHIVE}.sha256"
 
-NETPULSE_VERSION="$RELEASE_VERSION" ./scripts/make-app.sh
+HOPGAUGE_VERSION="$RELEASE_VERSION" ./scripts/make-app.sh
 
 /usr/bin/plutil -lint "$APP/Contents/Info.plist"
 /usr/bin/codesign --verify --deep --strict "$APP"
 test "$(/usr/bin/lipo -archs "$APP_BINARY")" = "arm64"
-test "$(/usr/bin/plutil -extract NetPulseReleaseVersion raw -o - "$APP/Contents/Info.plist")" = "$RELEASE_VERSION"
+test "$(/usr/bin/plutil -extract HopGaugeReleaseVersion raw -o - "$APP/Contents/Info.plist")" = "$RELEASE_VERSION"
 cmp -s LICENSE "$APP/Contents/Resources/LICENSE.txt"
 
 rm -f "$ARCHIVE" "$CHECKSUM"

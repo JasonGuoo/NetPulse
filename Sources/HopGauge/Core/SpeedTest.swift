@@ -84,7 +84,7 @@ enum SpeedTest {
             let url = URL(string: "https://speed.cloudflare.com/__down?bytes=\(bytes)")!
             var req = URLRequest(url: url)
             req.cachePolicy = .reloadIgnoringLocalCacheData
-            req.setValue("Mozilla/5.0 (Macintosh) NetPulse/1.0", forHTTPHeaderField: "User-Agent")
+            req.setValue("Mozilla/5.0 (Macintosh) HopGauge/1.0", forHTTPHeaderField: "User-Agent")
             let task = session.dataTask(with: req)
             counter.task = task
             task.resume()

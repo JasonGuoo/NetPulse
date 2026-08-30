@@ -11,12 +11,12 @@ Security fixes are applied to the current `main` branch and the latest published
 
 ## Report a vulnerability
 
-Do not open a public issue for a suspected vulnerability. Use GitHub's [private vulnerability report](https://github.com/JasonGuoo/NetPulse/security/advisories/new) instead.
+Do not open a public issue for a suspected vulnerability. Use GitHub's [private vulnerability report](https://github.com/JasonGuoo/HopGauge/security/advisories/new) instead.
 
 Include the following when possible:
 
 - A clear description of the issue and its impact
-- The NetPulse version or commit
+- The HopGauge version or commit
 - The macOS version and Mac model
 - Steps or a minimal proof of concept
 - Whether the issue requires a particular network, permission, or user action

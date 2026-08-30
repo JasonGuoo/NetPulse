@@ -1,6 +1,6 @@
 # Architecture
 
-NetPulse is a single Swift Package Manager executable that builds a native SwiftUI macOS app. It has no third-party package dependencies and does not install a helper process or system extension.
+HopGauge is a single Swift Package Manager executable that builds a native SwiftUI macOS app. It has no third-party package dependencies and does not install a helper process or system extension.
 
 ## Structure
 
@@ -63,7 +63,7 @@ Collectors parse system output into value types before updating `AppModel`. View
 
 Speed tests and website diagnostics run only after a user action. Speed tests use a 1 MB warm-up to size a 10–100 MB measurement; the UI receives a rolling instantaneous rate about eight times per second while the final result uses the full-stage average. A route trace is part of a website diagnosis and runs concurrently with HTTP and DNS measurements. It is limited to 20 hops, one UDP probe per hop, and a one-second response wait per hop.
 
-The status item animates only the highlight traveling along the NetPulse pulse trace. Its health color and metrics come from the existing 30-second snapshot, so animation does not add collector work or network traffic.
+The status item animates only the highlight traveling along the HopGauge pulse trace. Its health color and metrics come from the existing 30-second snapshot, so animation does not add collector work or network traffic.
 
 ## Concurrency and lifecycle
 
@@ -79,10 +79,12 @@ The score is intentionally conservative when one part of the path is clearly deg
 
 ## Testing
 
-`Tests/NetPulseTests` covers parsers, traceroute output, instantaneous-speed estimation, status-icon rendering, channel planning, formatting, URL normalization, HTTP metric construction, IP-provider matching, and diagnostic rules. Parser fixtures use synthetic or documentation-only addresses so test output can be shared safely.
+`Tests/HopGaugeTests` covers parsers, traceroute output, instantaneous-speed estimation, status-icon rendering, channel planning, formatting, URL normalization, HTTP metric construction, IP-provider matching, and diagnostic rules. Parser fixtures use synthetic or documentation-only addresses so test output can be shared safely.
 
 UI work can be checked with `--selftest-png`, `--selftest-menubar-png`, and `--selftest-settings-png`, which render deterministic sample data without requiring screen-recording permission. The diagnose-tab self-test includes a synthetic multi-hop path. `--probe` exercises live collectors without opening the main window.
 
+The app uses the `com.jason.hopgauge` bundle identifier and `hopgauge.*` preference keys. On the first launch after the product rename, a bounded one-time migration copies the four supported user preferences from the previous beta preference domain without overwriting values already saved by HopGauge.
+
 ## Packaging
 
-The root `VERSION` file is the release-version source of truth. `scripts/make-app.sh` performs an arm64 release build, assembles `NetPulse.app`, generates the `.icns` file, includes the license, writes bundle version metadata, and applies an ad-hoc signature. `scripts/package-release.sh` verifies the bundle and creates the versioned zip and SHA-256 file. The project does not create an installer, Developer ID signature, notarization ticket, or auto-update feed.
+The root `VERSION` file is the release-version source of truth. `scripts/make-app.sh` performs an arm64 release build, assembles `HopGauge.app`, generates the `.icns` file, includes the license, writes bundle version metadata, and applies an ad-hoc signature. `scripts/package-release.sh` verifies the bundle and creates the versioned zip and SHA-256 file. The project does not create an installer, Developer ID signature, notarization ticket, or auto-update feed.

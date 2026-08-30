@@ -136,7 +136,7 @@ struct MenuBarPanelView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("NetPulse \(L10n.t("menu.running"))")
+                Text("HopGauge \(L10n.t("menu.running"))")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundColor(Theme.textPrimary)
                 Text(L10n.t("menu.refresh.interval"))

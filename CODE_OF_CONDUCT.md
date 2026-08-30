@@ -1,6 +1,6 @@
 # Code of Conduct
 
-NetPulse is a technical project, and its community spaces should remain useful, respectful, and safe.
+HopGauge is a technical project, and its community spaces should remain useful, respectful, and safe.
 
 ## Expected behavior
 
@@ -16,6 +16,6 @@ Harassment, threats, discrimination, sexualized attention, deliberate intimidati
 
 ## Reporting and enforcement
 
-For a public, low-risk problem, flag the comment and ask a maintainer to review it. For a report that should remain private, use the repository's [private report form](https://github.com/JasonGuoo/NetPulse/security/advisories/new) and start the title with `Conduct`.
+For a public, low-risk problem, flag the comment and ask a maintainer to review it. For a report that should remain private, use the repository's [private report form](https://github.com/JasonGuoo/HopGauge/security/advisories/new) and start the title with `Conduct`.
 
 Maintainers may edit or remove content, lock a conversation, reject a contribution, or temporarily or permanently restrict participation. Decisions are based on the behavior and its impact on the project, not on a contributor's status.

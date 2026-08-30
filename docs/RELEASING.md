@@ -1,10 +1,10 @@
-# Releasing NetPulse
+# Releasing HopGauge
 
 This checklist covers Apple silicon beta releases distributed through GitHub Releases.
 
 ## Versioning
 
-NetPulse follows semantic versioning. Beta tags use the form `vMAJOR.MINOR.PATCH-beta.NUMBER`. Published tags and assets are immutable; ship a new beta number instead of moving or replacing an existing release.
+HopGauge follows semantic versioning. Beta tags use the form `vMAJOR.MINOR.PATCH-beta.NUMBER`. Published tags and assets are immutable; ship a new beta number instead of moving or replacing an existing release.
 
 The app's `CFBundleShortVersionString` must contain only period-separated integers. Use `CFBundleVersion` and the Git tag to distinguish beta builds.
 
@@ -26,10 +26,10 @@ swift test --arch arm64
 Verify the bundle:
 
 ```bash
-plutil -lint build/NetPulse.app/Contents/Info.plist
-codesign --verify --deep --strict build/NetPulse.app
-test "$(lipo -archs build/NetPulse.app/Contents/MacOS/NetPulse)" = "arm64"
-test -f build/NetPulse.app/Contents/Resources/LICENSE.txt
+plutil -lint build/HopGauge.app/Contents/Info.plist
+codesign --verify --deep --strict build/HopGauge.app
+test "$(lipo -archs build/HopGauge.app/Contents/MacOS/HopGauge)" = "arm64"
+test -f build/HopGauge.app/Contents/Resources/LICENSE.txt
 ```
 
 Run the app on an Apple silicon Mac and check all five views, refresh, the menu bar, one speed test, and one website diagnosis. Inspect an English self-test screenshot before publishing.
@@ -41,7 +41,7 @@ Run the app on an Apple silicon Mac and check all five views, refresh, the menu 
 ```bash
 release_version="$(tr -d '[:space:]' < VERSION)"
 cd build
-shasum -a 256 -c "NetPulse-${release_version}-macOS-arm64.zip.sha256"
+shasum -a 256 -c "HopGauge-${release_version}-macOS-arm64.zip.sha256"
 cd ..
 ```
 

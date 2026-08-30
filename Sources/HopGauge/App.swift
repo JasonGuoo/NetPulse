@@ -12,7 +12,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusIconPhase: Double = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if let lang = ProcessInfo.processInfo.environment["NETPULSE_LANG"],
+        AppPreferences.migrateLegacyDefaults()
+        if let lang = ProcessInfo.processInfo.environment["HOPGAUGE_LANG"],
            let language = AppLanguage(rawValue: lang) {
             L10n.shared.language = language
         }
@@ -62,7 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(menuBarVisibilityDidChange),
-            name: .netPulseMenuBarVisibilityChanged,
+            name: .hopGaugeMenuBarVisibilityChanged,
             object: nil
         )
         applyMenuBarPreference()
@@ -74,7 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        w.title = "NetPulse"
+        w.title = "HopGauge"
         w.titlebarAppearsTransparent = true
         w.titleVisibility = .hidden
         w.backgroundColor = NSColor(Theme.bgTop)
@@ -190,8 +191,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         refreshStatusIcon()
         button.title = ""
         button.contentTintColor = nil
-        button.setAccessibilityLabel("NetPulse, \(QualityForScore.label(menuBarSnapshot.healthScore))")
-        button.toolTip = "NetPulse \(L10n.t("menu.running"))"
+        button.setAccessibilityLabel("HopGauge, \(QualityForScore.label(menuBarSnapshot.healthScore))")
+        button.toolTip = "HopGauge \(L10n.t("menu.running"))"
     }
 
     private func refreshStatusIcon() {
@@ -249,7 +250,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return NSColor(Theme.red)
     }
 
-    /// Compact, transparent NetPulse glyph for the macOS status bar.
+    /// Compact, transparent HopGauge glyph for the macOS status bar.
     /// The moving highlight follows the pulse trace; its color reflects the latest health snapshot.
     static func renderStatusItemIcon(score: Int, connected: Bool, phase: Double) -> NSImage {
         let size = NSSize(width: 22, height: 18)
@@ -324,11 +325,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private static func sourceIcon() -> NSImage? {
-        if let url = Bundle.main.url(forResource: "NetPulseIcon", withExtension: "png"),
+        if let url = Bundle.main.url(forResource: "HopGaugeIcon", withExtension: "png"),
            let image = NSImage(contentsOf: url) {
             return image
         }
-        if let url = Bundle.module.url(forResource: "NetPulseIcon", withExtension: "png"),
+        if let url = Bundle.module.url(forResource: "HopGaugeIcon", withExtension: "png"),
            let image = NSImage(contentsOf: url) {
             return image
         }
@@ -536,7 +537,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 suggestion: L10n.t("vd.isp.tip")
             ),
         ]
-        if ProcessInfo.processInfo.environment["NETPULSE_EMPTY_STATE"] != "1" {
+        if ProcessInfo.processInfo.environment["HOPGAUGE_EMPTY_STATE"] != "1" {
             model.lastSpeed = SpeedResult(
                 downloadMbps: 423.6,
                 uploadMbps: 0,
@@ -632,7 +633,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     static func renderSettingsPNG(to path: String) {
-        let host = NSHostingView(rootView: NetPulseSettingsView())
+        let host = NSHostingView(rootView: HopGaugeSettingsView())
         host.setFrameSize(NSSize(width: 460, height: 206))
         host.layoutSubtreeIfNeeded()
         guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
@@ -813,12 +814,12 @@ enum QualityForScore {
 }
 
 @main
-struct NetPulseApp: App {
+struct HopGaugeApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
         Settings {
-            NetPulseSettingsView()
+            HopGaugeSettingsView()
         }
     }
 }
