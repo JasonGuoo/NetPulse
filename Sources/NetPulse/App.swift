@@ -176,13 +176,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let source = sourceIcon() {
             let image = NSImage(size: NSSize(width: size, height: size))
             image.lockFocus()
+            guard let context = NSGraphicsContext.current?.cgContext else {
+                image.unlockFocus()
+                return image
+            }
+
+            let scale = size / 512.0
+            let canvas = CGRect(x: 0, y: 0, width: size, height: size)
+            let iconBounds = canvas.insetBy(dx: 16 * scale, dy: 16 * scale)
+            let iconMask = CGPath(
+                roundedRect: iconBounds,
+                cornerWidth: 110 * scale,
+                cornerHeight: 110 * scale,
+                transform: nil
+            )
+
+            context.clear(canvas)
+            context.saveGState()
+            context.addPath(iconMask)
+            context.clip()
             NSGraphicsContext.current?.imageInterpolation = .high
             source.draw(
-                in: NSRect(x: 0, y: 0, width: size, height: size),
+                in: canvas,
                 from: NSRect(origin: .zero, size: source.size),
                 operation: .copy,
                 fraction: 1
             )
+            context.restoreGState()
             image.unlockFocus()
             return image
         }
@@ -278,9 +298,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         ]
         for spec in specs {
             let img = renderIcon(size: CGFloat(spec.px))
-            guard let tiff = img.tiffRepresentation,
-                  let rep = NSBitmapImageRep(data: tiff),
-                  let png = rep.representation(using: .png, properties: [:]) else { continue }
+            guard let rep = NSBitmapImageRep(
+                bitmapDataPlanes: nil,
+                pixelsWide: spec.px,
+                pixelsHigh: spec.px,
+                bitsPerSample: 8,
+                samplesPerPixel: 4,
+                hasAlpha: true,
+                isPlanar: false,
+                colorSpaceName: .deviceRGB,
+                bytesPerRow: 0,
+                bitsPerPixel: 0
+            ), let context = NSGraphicsContext(bitmapImageRep: rep) else { continue }
+
+            rep.size = NSSize(width: spec.px, height: spec.px)
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = context
+            context.imageInterpolation = .high
+            context.cgContext.clear(CGRect(x: 0, y: 0, width: spec.px, height: spec.px))
+            img.draw(
+                in: NSRect(x: 0, y: 0, width: spec.px, height: spec.px),
+                from: NSRect(origin: .zero, size: img.size),
+                operation: .copy,
+                fraction: 1
+            )
+            context.flushGraphics()
+            NSGraphicsContext.restoreGraphicsState()
+
+            guard let png = rep.representation(using: .png, properties: [:]) else { continue }
             try? png.write(to: dir.appendingPathComponent(spec.name))
         }
     }

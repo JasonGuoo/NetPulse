@@ -11,7 +11,7 @@ NetPulse is a native macOS network diagnostics app for Apple Silicon. It brings 
 
 ## Download
 
-[Download NetPulse 1.0 Beta 2](https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.2) from GitHub Releases. The published app supports Apple Silicon only and requires macOS 14 or later.
+[Download NetPulse 1.0 Beta 3](https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.3) from GitHub Releases. The published app supports Apple Silicon only and requires macOS 14 or later.
 
 The beta is ad-hoc signed, not notarized with Apple. On first launch, macOS may require you to Control-click `NetPulse.app`, choose **Open**, and confirm once. Source builds have the same limitation unless you sign and notarize them with your own Developer ID.
 

@@ -4,6 +4,14 @@ This file records user-visible changes to NetPulse.
 
 ## [Unreleased]
 
+## [1.0.0-beta.3] - 2026-08-30
+
+### Fixed
+
+- Replaced the opaque square icon canvas with a transparent rounded macOS icon.
+- Generated every iconset entry at its required pixel dimensions on Retina displays.
+- Added regression coverage for icon dimensions and transparent corners.
+
 ## [1.0.0-beta.2] - 2026-08-30
 
 ### Changed
@@ -32,6 +40,7 @@ This file records user-visible changes to NetPulse.
 - English, Simplified Chinese, Japanese, and Korean interface languages.
 - Apple silicon app bundle for macOS 14 and later.
 
-[Unreleased]: https://github.com/JasonGuoo/NetPulse/compare/v1.0.0-beta.2...HEAD
+[Unreleased]: https://github.com/JasonGuoo/NetPulse/compare/v1.0.0-beta.3...HEAD
+[1.0.0-beta.3]: https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.3
 [1.0.0-beta.2]: https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.1

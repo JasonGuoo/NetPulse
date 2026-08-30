@@ -4,7 +4,7 @@ This checklist covers Apple silicon beta releases distributed through GitHub Rel
 
 ## Versioning
 
-NetPulse follows semantic versioning. Beta tags use the form `v1.0.0-beta.2`. Published tags and assets are immutable; ship a new beta number instead of moving or replacing an existing release.
+NetPulse follows semantic versioning. Beta tags use the form `vMAJOR.MINOR.PATCH-beta.NUMBER`. Published tags and assets are immutable; ship a new beta number instead of moving or replacing an existing release.
 
 The app's `CFBundleShortVersionString` must contain only period-separated integers. Use `CFBundleVersion` and the Git tag to distinguish beta builds.
 
