@@ -1,6 +1,5 @@
 # NetPulse
 
-[![CI](https://github.com/JasonGuoo/NetPulse/actions/workflows/ci.yml/badge.svg)](https://github.com/JasonGuoo/NetPulse/actions/workflows/ci.yml)
 ![Platform](https://img.shields.io/badge/macOS-14%2B-black?logo=apple)
 ![Architecture](https://img.shields.io/badge/Apple%20Silicon-arm64-3478f6)
 ![License](https://img.shields.io/badge/license-MIT-2ea44f)
@@ -67,6 +66,8 @@ Process names, network addresses, SSIDs, and public IP details can be sensitive.
 For general questions, read [Support](SUPPORT.md). Report reproducible bugs through [GitHub Issues](https://github.com/JasonGuoo/NetPulse/issues), and report security problems through the private process in [Security](SECURITY.md).
 
 ## For Developers
+
+[![CI](https://github.com/JasonGuoo/NetPulse/actions/workflows/ci.yml/badge.svg)](https://github.com/JasonGuoo/NetPulse/actions/workflows/ci.yml)
 
 ### Development requirements
 
