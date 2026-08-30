@@ -16,9 +16,10 @@ These measurements are kept in process memory and are discarded when NetPulse qu
 
 ## Data saved on the Mac
 
-NetPulse stores three values in the current user's macOS preferences:
+NetPulse stores four values in the current user's macOS preferences:
 
 - The selected interface language under `netpulse.language`
+- Whether the menu bar item is visible under `netpulse.menuBarEnabled`
 - The last URL submitted for website diagnosis under `netpulse.lastDiagURL`
 - Up to five recent diagnostic URLs under `netpulse.recentDiagURLs`
 

@@ -11,7 +11,7 @@ NetPulse is a native macOS network diagnostics app for Apple Silicon. It brings 
 
 ## Download
 
-[Download NetPulse 1.0 Beta 3](https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.3) from GitHub Releases. The published app supports Apple Silicon only and requires macOS 14 or later.
+[Download NetPulse 1.0 Beta 4](https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.4) from GitHub Releases. The published app supports Apple Silicon only and requires macOS 14 or later.
 
 The beta is ad-hoc signed, not notarized with Apple. On first launch, macOS may require you to Control-click `NetPulse.app`, choose **Open**, and confirm once. Source builds have the same limitation unless you sign and notarize them with your own Developer ID.
 
@@ -24,7 +24,11 @@ The beta is ad-hoc signed, not notarized with Apple. On first launch, macOS may 
 | Wi-Fi link | RSSI, noise, SNR, negotiated rate, channel width, MCS, PHY mode, nearby channel use, and latency history |
 | Speed | Cloudflare download test alongside negotiated Wi-Fi rate and whole-system traffic |
 | Diagnose | DNS, TCP, TLS, time to first byte, and download timing for a URL, plus system and public DNS comparison |
-| Menu bar | Signal strength, link rate, gateway and DNS latency, and current network status |
+| Menu bar | Signal strength, link rate, current-channel congestion, gateway and DNS latency, and network status |
+
+The menu bar panel takes a lightweight snapshot every 30 seconds and refreshes immediately when opened. It can be shown or hidden from the gear menu in the main window or from NetPulse Settings.
+
+![NetPulse menu bar panel](docs/menu-bar.png)
 
 The interface can follow the system language or use English, Simplified Chinese, Japanese, or Korean.
 
@@ -76,7 +80,7 @@ The project has no third-party Swift package dependencies and no NetPulse backen
 
 ## Network access and privacy
 
-NetPulse has no accounts, analytics, advertising, or crash-reporting service. It saves the selected interface language, the last diagnosed URL, and up to five recent diagnostic URLs in the current user's macOS preferences. Measurement results remain in memory and are discarded when NetPulse quits.
+NetPulse has no accounts, analytics, advertising, or crash-reporting service. It saves the selected interface language, menu bar visibility, the last diagnosed URL, and up to five recent diagnostic URLs in the current user's macOS preferences. Measurement results remain in memory and are discarded when NetPulse quits.
 
 The following features make network requests:
 

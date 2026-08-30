@@ -1,10 +1,12 @@
 import SwiftUI
 import AppKit
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     var window: NSWindow?
     let model = AppModel()
+    private let menuBarSnapshot = MenuBarSnapshot()
     private var statusItem: NSStatusItem?
+    private var statusPopover: NSPopover?
     private var statusTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -25,6 +27,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             exit(0)
         }
 
+        if let idx = CommandLine.arguments.firstIndex(of: "--selftest-menubar-png"),
+           CommandLine.arguments.count > idx + 1 {
+            Self.renderMenuBarPNG(to: CommandLine.arguments[idx + 1])
+            exit(0)
+        }
+
+        if let idx = CommandLine.arguments.firstIndex(of: "--selftest-settings-png"),
+           CommandLine.arguments.count > idx + 1 {
+            Self.renderSettingsPNG(to: CommandLine.arguments[idx + 1])
+            exit(0)
+        }
+
         // 开发用：真实采集链路自检（无 UI）
         if CommandLine.arguments.contains("--probe") {
             Task {
@@ -42,7 +56,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         installAppIcon()
-        installStatusItem()
+        AppPreferences.registerDefaults()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(menuBarVisibilityDidChange),
+            name: .netPulseMenuBarVisibilityChanged,
+            object: nil
+        )
+        applyMenuBarPreference()
 
         let contentView = ContentView().environmentObject(model)
         let w = NSWindow(
@@ -66,6 +87,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.activate(ignoringOtherApps: true)
         model.coordinator = CoreCoordinator(model: model)
         model.start()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            self?.refreshMenuBarSnapshot()
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -79,75 +103,118 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         statusTimer?.invalidate()
+        NotificationCenter.default.removeObserver(self)
         model.stop()
     }
 
     // MARK: - Menu bar
 
     private func installStatusItem() {
+        guard statusItem == nil else {
+            refreshStatusButton()
+            return
+        }
+
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = NSImage(systemSymbolName: "waveform.path.ecg", accessibilityDescription: "NetPulse")
-        item.button?.imagePosition = .imageLeading
-        item.menu = NSMenu()
-        item.menu?.delegate = self
+        if let button = item.button {
+            button.imagePosition = .imageLeading
+            button.font = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+            button.target = self
+            button.action = #selector(toggleStatusPopover(_:))
+            button.sendAction(on: [.leftMouseUp])
+        }
+
+        let panel = MenuBarPanelView(
+            snapshot: menuBarSnapshot,
+            onOpen: { [weak self] in self?.openMainWindow() },
+            onRefresh: { [weak self] in self?.refreshNow() },
+            onQuit: { [weak self] in self?.quitApp() }
+        )
+
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.animates = true
+        popover.contentSize = NSSize(width: 320, height: 410)
+        popover.contentViewController = NSHostingController(rootView: panel)
+
         statusItem = item
-        refreshStatusMenu()
-        statusTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            self?.refreshStatusMenu()
+        statusPopover = popover
+        refreshMenuBarSnapshot()
+
+        let timer = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
+            self?.refreshMenuBarSnapshot()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        statusTimer = timer
+    }
+
+    private func removeStatusItem() {
+        statusTimer?.invalidate()
+        statusTimer = nil
+        statusPopover?.performClose(nil)
+        statusPopover = nil
+        if let statusItem {
+            NSStatusBar.system.removeStatusItem(statusItem)
+        }
+        statusItem = nil
+    }
+
+    private func applyMenuBarPreference() {
+        if AppPreferences.isMenuBarEnabled {
+            installStatusItem()
+        } else {
+            removeStatusItem()
         }
     }
 
-    func menuWillOpen(_ menu: NSMenu) {
-        refreshStatusMenu()
+    @objc private func menuBarVisibilityDidChange(_ notification: Notification) {
+        applyMenuBarPreference()
     }
 
-    private func refreshStatusMenu() {
-        guard let statusItem, let menu = statusItem.menu else { return }
-        let signal = model.wifi.rssi.map { "\($0) dBm" } ?? "—"
-        statusItem.button?.title = "  \(signal)"
-        statusItem.button?.contentTintColor = model.wifi.connected ? NSColor(Theme.green) : NSColor.secondaryLabelColor
+    private func refreshStatusButton() {
+        guard let button = statusItem?.button else { return }
+        let signal = menuBarSnapshot.rssi.map { "\($0) dBm" } ?? "—"
+        let symbolName = menuBarSnapshot.wifiConnected ? "wifi" : "wifi.slash"
+        let symbolConfig = NSImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
+        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "NetPulse")?
+            .withSymbolConfiguration(symbolConfig)
+        image?.isTemplate = true
 
-        menu.removeAllItems()
-        let running = NSMenuItem(title: "NetPulse \(L10n.t("menu.running"))", action: nil, keyEquivalent: "")
-        running.image = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: nil)
-        running.isEnabled = false
-        menu.addItem(running)
-        menu.addItem(.separator())
-        addMetricItem(menu, symbol: "wifi", title: L10n.t("tile.signal"), value: signal)
-        addMetricItem(menu, symbol: "arrow.left.and.right", title: L10n.t("tile.txrate"), value: model.wifi.txRate.map { Fmt.mbps($0) } ?? "—")
-        addMetricItem(menu, symbol: "clock", title: L10n.t("ov.gateway"), value: model.gatewayPing?.last.map(Fmt.ms) ?? "—")
-        addMetricItem(menu, symbol: "network", title: "DNS", value: model.dnsPing?.last.map(Fmt.ms) ?? "—")
-        addMetricItem(menu, symbol: "checkmark.shield", title: L10n.t("menu.network.status"), value: QualityForScore.label(model.healthScore))
-        menu.addItem(.separator())
-
-        let open = NSMenuItem(title: L10n.t("menu.open"), action: #selector(openMainWindow), keyEquivalent: "")
-        open.target = self
-        open.image = NSImage(systemSymbolName: "macwindow", accessibilityDescription: nil)
-        menu.addItem(open)
-        let refresh = NSMenuItem(title: L10n.t("refresh"), action: #selector(refreshNow), keyEquivalent: "r")
-        refresh.target = self
-        refresh.image = NSImage(systemSymbolName: "arrow.triangle.2.circlepath", accessibilityDescription: nil)
-        menu.addItem(refresh)
-        let quit = NSMenuItem(title: L10n.t("menu.quit"), action: #selector(quitApp), keyEquivalent: "q")
-        quit.target = self
-        quit.image = NSImage(systemSymbolName: "rectangle.portrait.and.arrow.right", accessibilityDescription: nil)
-        menu.addItem(quit)
+        button.image = image
+        button.title = "  \(signal)"
+        button.contentTintColor = menuBarSnapshot.wifiConnected
+            ? NSColor(Theme.green)
+            : NSColor.secondaryLabelColor
+        button.toolTip = "NetPulse \(L10n.t("menu.running"))"
     }
 
-    private func addMetricItem(_ menu: NSMenu, symbol: String, title: String, value: String) {
-        let item = NSMenuItem(title: "\(title)    \(value)", action: nil, keyEquivalent: "")
-        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
-        item.isEnabled = false
-        menu.addItem(item)
+    private func refreshMenuBarSnapshot() {
+        menuBarSnapshot.update(from: model)
+        refreshStatusButton()
+    }
+
+    @objc private func toggleStatusPopover(_ sender: Any?) {
+        guard let button = statusItem?.button, let statusPopover else { return }
+        refreshMenuBarSnapshot()
+        if statusPopover.isShown {
+            statusPopover.performClose(sender)
+        } else {
+            statusPopover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        }
     }
 
     @objc private func openMainWindow() {
+        statusPopover?.performClose(nil)
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc private func refreshNow() {
-        Task { await model.coordinator?.refreshAll() }
+        Task { [weak self] in
+            guard let self else { return }
+            await model.coordinator?.refreshAll()
+            refreshMenuBarSnapshot()
+        }
     }
 
     @objc private func quitApp() {
@@ -413,6 +480,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         try? png.write(to: URL(fileURLWithPath: path))
     }
 
+    static func renderMenuBarPNG(to path: String) {
+        let model = AppModel()
+        model.wifi = Self.demoWifi
+        model.pingTargets = Self.demoPings
+        model.neighbors = Self.demoNeighbors
+        model.dnsResults = [
+            DnsResult(server: L10n.t("dns.system"), ms: 19),
+            DnsResult(server: "1.1.1.1", ms: 24),
+            DnsResult(server: "8.8.8.8", ms: 26),
+        ]
+
+        let snapshot = MenuBarSnapshot()
+        snapshot.update(from: model)
+        let view = MenuBarPanelView(snapshot: snapshot, onOpen: {}, onRefresh: {}, onQuit: {})
+        let host = NSHostingView(rootView: view)
+        host.setFrameSize(NSSize(width: 320, height: 406))
+        host.layoutSubtreeIfNeeded()
+        guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
+        host.cacheDisplay(in: host.bounds, to: rep)
+        guard let png = rep.representation(using: .png, properties: [:]) else { return }
+        try? png.write(to: URL(fileURLWithPath: path))
+    }
+
+    static func renderSettingsPNG(to path: String) {
+        let host = NSHostingView(rootView: NetPulseSettingsView())
+        host.setFrameSize(NSSize(width: 460, height: 206))
+        host.layoutSubtreeIfNeeded()
+        guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
+        host.cacheDisplay(in: host.bounds, to: rep)
+        guard let png = rep.representation(using: .png, properties: [:]) else { return }
+        try? png.write(to: URL(fileURLWithPath: path))
+    }
+
     static let demoPings: [PingTargetState] = {
         var gw = PingTargetState(label: L10n.t("pk.gateway"), host: "192.168.50.1")
         gw.history = [3.9, 4.2, 4.0, 4.4, 4.1, 4.3, 4.0, 4.2]
@@ -584,7 +684,7 @@ struct NetPulseApp: App {
 
     var body: some Scene {
         Settings {
-            EmptyView()
+            NetPulseSettingsView()
         }
     }
 }

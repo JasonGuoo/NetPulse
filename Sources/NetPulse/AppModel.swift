@@ -114,6 +114,18 @@ final class AppModel: ObservableObject {
         return neighbors.filter { $0.channel == ch && !$0.isOwnRouter }.count
     }
 
+    var currentChannelOverlapCount: Int? {
+        guard wifi.connected,
+              let channel = wifi.channel,
+              let band = wifi.band else { return nil }
+        let current = (
+            channel: channel,
+            width: wifi.channelWidthMHz ?? 20,
+            ssid: wifi.ssid ?? L10n.t("lk.legend.current")
+        )
+        return ChannelPlan.analyze(band: band, neighbors: neighbors, current: current).overlapCount
+    }
+
     func recordProcessRates(_ processes: [ProcessTraffic]) {
         let activeIDs = Set(processes.map(\.id))
         for process in processes {

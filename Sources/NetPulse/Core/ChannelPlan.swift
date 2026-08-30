@@ -3,6 +3,18 @@ import Foundation
 /// 信道占用分析：带宽条布局、重叠判定、路由器调整建议
 enum ChannelPlan {
 
+    enum CongestionLevel: Equatable {
+        case low, medium, high
+
+        var localizationKey: String {
+            switch self {
+            case .low: return "lk.congestion.low"
+            case .medium: return "lk.congestion.medium"
+            case .high: return "lk.congestion.high"
+            }
+        }
+    }
+
     struct APBar: Identifiable {
         let id = UUID()
         let ssid: String
@@ -36,6 +48,12 @@ enum ChannelPlan {
         let bL = Double(b.channel) - Double(b.width) / 10.0
         let bR = Double(b.channel) + Double(b.width) / 10.0
         return aL < bR && bL < aR
+    }
+
+    static func congestionLevel(for overlapCount: Int) -> CongestionLevel {
+        if overlapCount <= 2 { return .low }
+        if overlapCount <= 4 { return .medium }
+        return .high
     }
 
     static func analyze(band: String,

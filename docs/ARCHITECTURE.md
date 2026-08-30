@@ -7,6 +7,7 @@ NetPulse is a single Swift Package Manager executable that builds a native Swift
 | Path | Responsibility |
 | --- | --- |
 | `App.swift` | App lifecycle, window and menu bar setup, icon generation, and development self-tests |
+| `AppPreferences.swift` | Persistent application preferences and menu bar visibility notifications |
 | `AppModel.swift` | Observable state shared by collectors, diagnostics, and views |
 | `Models.swift` | Value types for Wi-Fi, connections, traffic, ping, DNS, HTTP timing, speed, and verdicts |
 | `Core/CoreCoordinator.swift` | Starts and stops collectors, coordinates manual refresh, speed tests, and URL diagnosis |
@@ -21,6 +22,8 @@ NetPulse is a single Swift Package Manager executable that builds a native Swift
 | `L10n.swift` | Runtime localization tables and language preference |
 | `Components/` | Shared cards, charts, and channel visualization |
 | `Views/` | Overview, connections, Wi-Fi link, speed, and diagnose screens |
+| `Views/MenuBarPanelView.swift` | Low-refresh menu bar snapshot and status panel |
+| `Views/SettingsView.swift` | In-app and standard settings controls |
 
 ## Data flow
 
@@ -55,6 +58,7 @@ Collectors parse system output into value types before updating `AppModel`. View
 | Active ping targets | About 1 second per target |
 | Public egress details | About 5 minutes |
 | Overview verdicts | 5 seconds after initial data is available |
+| Menu bar snapshot | 30 seconds and whenever the panel opens |
 
 Speed tests and website diagnostics run only after a user action.
 
@@ -74,7 +78,7 @@ The score is intentionally conservative when one part of the path is clearly deg
 
 `Tests/NetPulseTests` covers parsers, channel planning, formatting, URL normalization, HTTP metric construction, IP-provider matching, and diagnostic rules. Parser fixtures use synthetic or documentation-only addresses so test output can be shared safely.
 
-UI work can be checked with `--selftest-png`, which renders deterministic sample data without requiring screen-recording permission. `--probe` exercises live collectors without opening the main window.
+UI work can be checked with `--selftest-png`, `--selftest-menubar-png`, and `--selftest-settings-png`, which render deterministic sample data without requiring screen-recording permission. `--probe` exercises live collectors without opening the main window.
 
 ## Packaging
 

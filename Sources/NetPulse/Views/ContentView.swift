@@ -107,6 +107,7 @@ struct AppToolbar: View {
 
             RefreshButton()
             LanguageMenu()
+            AppSettingsMenu()
 
             Button {
                 showHealth.toggle()

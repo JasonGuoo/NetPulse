@@ -124,9 +124,7 @@ struct WifiLinkView: View {
         let analysis = currentBandAnalysis
         let overlap = analysis.overlapCount
         let color: Color = overlap == 0 ? Theme.green : (overlap <= 2 ? Theme.cyan : (overlap <= 4 ? Theme.yellow : Theme.red))
-        let congestion = overlap == 0 ? L10n.t("lk.congestion.low")
-            : (overlap <= 2 ? L10n.t("lk.congestion.low")
-               : (overlap <= 4 ? L10n.t("lk.congestion.medium") : L10n.t("lk.congestion.high")))
+        let congestion = L10n.t(ChannelPlan.congestionLevel(for: overlap).localizationKey)
         return VStack(alignment: .leading, spacing: 11) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {

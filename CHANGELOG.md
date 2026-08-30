@@ -4,6 +4,19 @@ This file records user-visible changes to NetPulse.
 
 ## [Unreleased]
 
+## [1.0.0-beta.4] - 2026-08-30
+
+### Added
+
+- Added a native menu bar panel for signal, link rate, current-channel congestion, gateway latency, DNS latency, and network health.
+- Added Open, Refresh, and Quit actions to the menu bar panel.
+- Added a persistent in-app setting for showing or hiding the menu bar item.
+
+### Changed
+
+- Limited automatic menu bar snapshots to once every 30 seconds while refreshing immediately when opened.
+- Added deterministic menu bar and settings rendering for visual review.
+
 ## [1.0.0-beta.3] - 2026-08-30
 
 ### Fixed
@@ -40,7 +53,8 @@ This file records user-visible changes to NetPulse.
 - English, Simplified Chinese, Japanese, and Korean interface languages.
 - Apple silicon app bundle for macOS 14 and later.
 
-[Unreleased]: https://github.com/JasonGuoo/NetPulse/compare/v1.0.0-beta.3...HEAD
+[Unreleased]: https://github.com/JasonGuoo/NetPulse/compare/v1.0.0-beta.4...HEAD
+[1.0.0-beta.4]: https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.4
 [1.0.0-beta.3]: https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.3
 [1.0.0-beta.2]: https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/JasonGuoo/NetPulse/releases/tag/v1.0.0-beta.1

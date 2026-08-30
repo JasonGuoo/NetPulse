@@ -24,7 +24,7 @@ test "$(/usr/bin/plutil -extract NetPulseReleaseVersion raw -o - "$APP/Contents/
 cmp -s LICENSE "$APP/Contents/Resources/LICENSE.txt"
 
 rm -f "$ARCHIVE" "$CHECKSUM"
-/usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP" "$ARCHIVE"
+/usr/bin/ditto -c -k --keepParent --norsrc --noextattr --noqtn --noacl "$APP" "$ARCHIVE"
 (
     cd build
     /usr/bin/shasum -a 256 "${ARTIFACT}.zip" > "${ARTIFACT}.zip.sha256"
