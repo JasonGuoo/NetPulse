@@ -3,7 +3,12 @@ import Foundation
 /// 异步子进程执行器：所有系统命令采集的统一入口
 enum Shell {
 
-    static func run(_ launchPath: String, _ arguments: [String], timeout: TimeInterval = 10) async -> String? {
+    static func run(
+        _ launchPath: String,
+        _ arguments: [String],
+        timeout: TimeInterval = 10,
+        mergeStderr: Bool = false
+    ) async -> String? {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: launchPath)
         task.arguments = arguments
@@ -11,7 +16,7 @@ enum Shell {
 
         let pipe = Pipe()
         task.standardOutput = pipe
-        task.standardError = Pipe()   // 丢弃 stderr
+        task.standardError = mergeStderr ? pipe : Pipe()
 
         do {
             try task.run()

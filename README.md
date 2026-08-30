@@ -30,7 +30,7 @@ NetPulse does not require `sudo`, create an account, or install a background ser
 | Connections | Per-process traffic, active remote endpoints, cumulative transfer totals, and local listening ports |
 | Wi-Fi link | RSSI, noise, SNR, negotiated rate, channel width, MCS, PHY mode, nearby channel use, and latency history |
 | Speed | Cloudflare download test alongside negotiated Wi-Fi rate and whole-system traffic |
-| Diagnose | DNS, TCP, TLS, time to first byte, and download timing for a URL, plus system and public DNS comparison |
+| Diagnose | DNS, TCP, TLS, time to first byte, and download timing for a URL, plus DNS comparison and a hop-by-hop network path |
 | Menu bar | Signal strength, link rate, current-channel congestion, gateway and DNS latency, and network status |
 
 The menu bar panel takes a lightweight snapshot every 30 seconds and refreshes immediately when opened. It can be shown or hidden from the gear menu in the main window or from NetPulse Settings.
@@ -50,7 +50,7 @@ The following features make network requests:
 | Connectivity and latency checks | While NetPulse is running | The current gateway, active DNS server, `1.1.1.1`, and `8.8.8.8` |
 | Public egress lookup | At launch and about every five minutes | Cloudflare trace and `ipinfo.io` |
 | Download speed test | Only when requested | Cloudflare's speed test endpoint; normally about 8–28 MB including warm-up |
-| Website diagnosis | Only when requested | The URL entered by the user, the system resolver, `1.1.1.1`, and `8.8.8.8` |
+| Website diagnosis | Only when requested | The URL entered by the user, the system resolver, `1.1.1.1`, `8.8.8.8`, and bounded traceroute probes toward the entered host |
 
 Process names, network addresses, SSIDs, and public IP details can be sensitive. Review and redact screenshots or logs before posting them. See [Privacy](docs/PRIVACY.md) for the full data-flow summary.
 
@@ -60,6 +60,7 @@ Process names, network addresses, SSIDs, and public IP details can be sensitive.
 - An unprivileged process cannot always inspect connections owned by other users or `root`.
 - Per-connection packet loss is not available without elevated capture privileges. NetPulse uses target pings and system-wide TCP retransmissions as supporting signals.
 - Some routers and networks block ICMP. A failed ping alone does not prove that the Internet connection is down.
+- Some routers do not answer traceroute probes. A silent intermediate hop does not by itself indicate packet loss, and an active VPN changes the visible path.
 - Download tests use real bandwidth and may incur data charges.
 - A health score compresses several measurements into one number. Check the underlying metrics before acting on it.
 
@@ -109,7 +110,7 @@ Create the verified release zip and SHA-256 file with:
 
 ### Architecture and data sources
 
-NetPulse uses macOS frameworks and command-line tools already present on the system. The main inputs are CoreWLAN, `system_profiler`, `lsof`, `nettop`, `route`, `scutil`, `ipconfig`, `ping`, `dig`, and `netstat`.
+NetPulse uses macOS frameworks and command-line tools already present on the system. The main inputs are CoreWLAN, `system_profiler`, `lsof`, `nettop`, `route`, `traceroute`, `scutil`, `ipconfig`, `ping`, `dig`, and `netstat`.
 
 Collectors feed a shared application model. Rule-based diagnostics then compare signal quality, latency, loss, DNS timing, HTTP timing, and measured throughput. These results are troubleshooting clues, not a substitute for a packet capture or an ISP-side test.
 

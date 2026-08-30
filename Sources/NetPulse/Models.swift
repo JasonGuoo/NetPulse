@@ -140,6 +140,38 @@ struct DnsResult: Identifiable {
     var error: String?
 }
 
+enum RouteTraceMethod: String, Equatable {
+    case udp = "UDP"
+    case icmp = "ICMP"
+}
+
+enum RouteTraceFailure: Equatable {
+    case invalidTarget
+    case unavailable
+    case noRoute
+}
+
+struct RouteHop: Identifiable, Equatable {
+    var id: Int { index }
+    let index: Int
+    let address: String?
+    let latencyMs: Double?
+    let annotation: String?
+
+    var responded: Bool { address != nil }
+}
+
+struct RouteTraceResult: Equatable {
+    let target: String
+    var resolvedAddress: String?
+    var hops: [RouteHop] = []
+    var reachedDestination = false
+    var method: RouteTraceMethod = .udp
+    var duration: TimeInterval = 0
+    var failure: RouteTraceFailure?
+    var measuredAt = Date()
+}
+
 struct SpeedResult {
     var downloadMbps: Double = 0
     var uploadMbps: Double = 0

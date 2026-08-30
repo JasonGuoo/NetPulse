@@ -16,8 +16,11 @@ struct DiagnoseView: View {
                 inputCard
                 if let timing = model.lastTiming {
                     resultCards(timing)
-                } else {
+                } else if !model.diagnosing {
                     placeholder
+                }
+                if model.tracingRoute || model.routeTrace != nil {
+                    routeCard
                 }
                 footnoteCard
             }
@@ -66,12 +69,12 @@ struct DiagnoseView: View {
                         startIfPossible()
                     } label: {
                         HStack(spacing: 7) {
-                            if model.diagnosing {
+                            if model.diagnosing || model.tracingRoute {
                                 ProgressView().controlSize(.small).tint(.black)
                             } else {
                                 Image(systemName: "waveform.path.ecg")
                             }
-                            Text(L10n.t(model.diagnosing ? "dg.going" : "dg.go"))
+                            Text(L10n.t((model.diagnosing || model.tracingRoute) ? "dg.going" : "dg.go"))
                         }
                         .font(.system(size: 12.5, weight: .bold))
                         .foregroundColor(.black.opacity(0.85))
@@ -80,7 +83,7 @@ struct DiagnoseView: View {
                         .background(Capsule().fill(Theme.cyan))
                     }
                     .buttonStyle(.plain)
-                    .disabled(model.diagnosing || urlText.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(model.diagnosing || model.tracingRoute || urlText.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
 
                 HStack(spacing: 6) {
@@ -130,13 +133,178 @@ struct DiagnoseView: View {
 
     private func startIfPossible() {
         let trimmed = urlText.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty, !model.diagnosing else { return }
+        guard !trimmed.isEmpty, !model.diagnosing, !model.tracingRoute else { return }
         remember(trimmed)
+        model.lastTiming = nil
+        model.dnsResults = []
+        model.routeTrace = nil
         Task {
             model.diagnosing = true
-            await model.coordinator?.runDiagnosis(url: trimmed)
+            guard let coordinator = model.coordinator else {
+                model.diagnosing = false
+                return
+            }
+            async let route: Void = coordinator.runRouteTrace(target: trimmed)
+            await coordinator.runDiagnosis(url: trimmed)
             model.diagnosing = false
+            await route
         }
+    }
+
+    // MARK: 路径探测
+
+    private var routeCard: some View {
+        NeonCard(title: L10n.t("dg.route.title"), systemImage: "point.3.connected.trianglepath.dotted") {
+            if model.tracingRoute {
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(Theme.cyan)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(L10n.t("dg.route.running"))
+                            .font(.system(size: 11.5, weight: .semibold))
+                            .foregroundColor(Theme.textPrimary)
+                        Text(L10n.t("dg.route.wait"))
+                            .font(.system(size: 10))
+                            .foregroundColor(Theme.textFaint)
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+            } else if let trace = model.routeTrace {
+                routeResult(trace)
+            }
+        }
+    }
+
+    private func routeResult(_ trace: RouteTraceResult) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: routeStatusIcon(trace))
+                    .foregroundColor(routeStatusColor(trace))
+                Text(routeStatusText(trace))
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundColor(routeStatusColor(trace))
+                Spacer()
+                routeMetaPill(trace.method.rawValue)
+                routeMetaPill(L10n.tf("dg.route.hops", trace.hops.count))
+                routeMetaPill(String(format: "%.1f s", trace.duration))
+            }
+
+            if trace.failure == nil {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 5) {
+                        ForEach(Array(trace.hops.enumerated()), id: \.element.id) { offset, hop in
+                            if offset > 0 {
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundColor(Theme.textFaint)
+                            }
+                            routeHop(hop)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    if !model.overview.vpnActive.isEmpty && !isLoopback(trace) {
+                        routeNote(icon: "lock.shield", text: L10n.t("dg.route.vpn"), color: Theme.purple)
+                    }
+                    routeNote(icon: "info.circle", text: L10n.t("dg.route.note"), color: Theme.textFaint)
+                }
+            }
+        }
+    }
+
+    private func routeHop(_ hop: RouteHop) -> some View {
+        let color = routeHopColor(hop)
+        return VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text(L10n.tf("dg.route.hop", hop.index))
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(color)
+                Spacer()
+                Circle()
+                    .fill(color)
+                    .frame(width: 5, height: 5)
+            }
+            Text(hop.address ?? L10n.t("dg.route.no.reply"))
+                .font(Theme.mono(10.5, .medium))
+                .foregroundColor(hop.responded ? Theme.textPrimary : Theme.textFaint)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            HStack(spacing: 4) {
+                Text(hop.latencyMs.map { String(format: "%.1f ms", $0) } ?? L10n.t("dash"))
+                    .font(Theme.mono(9.5))
+                    .foregroundColor(color.opacity(0.9))
+                if let annotation = hop.annotation {
+                    Text(annotation)
+                        .font(Theme.mono(8.5, .bold))
+                        .foregroundColor(Theme.red)
+                }
+            }
+        }
+        .padding(9)
+        .frame(width: 122, height: 68, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.panelRaised.opacity(0.72)))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(color.opacity(0.24), lineWidth: 0.8))
+    }
+
+    private func routeMetaPill(_ text: String) -> some View {
+        Text(text)
+            .font(Theme.mono(9.5, .medium))
+            .foregroundColor(Theme.textSecondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(Color.white.opacity(0.045)))
+            .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 0.8))
+    }
+
+    private func routeNote(icon: String, text: String, color: Color) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 9))
+                .foregroundColor(color)
+                .padding(.top, 1)
+            Text(text)
+                .font(.system(size: 9.5))
+                .foregroundColor(Theme.textFaint)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func routeHopColor(_ hop: RouteHop) -> Color {
+        guard let milliseconds = hop.latencyMs else { return Theme.textFaint }
+        if hop.annotation != nil { return Theme.red }
+        if milliseconds < 50 { return Theme.green }
+        if milliseconds < 150 { return Theme.cyan }
+        if milliseconds < 300 { return Theme.yellow }
+        return Theme.red
+    }
+
+    private func routeStatusText(_ trace: RouteTraceResult) -> String {
+        if let failure = trace.failure {
+            switch failure {
+            case .invalidTarget: return L10n.t("dg.route.invalid")
+            case .unavailable: return L10n.t("dg.route.unavailable")
+            case .noRoute: return L10n.t("dg.route.failed")
+            }
+        }
+        return L10n.t(trace.reachedDestination ? "dg.route.reached" : "dg.route.partial")
+    }
+
+    private func routeStatusIcon(_ trace: RouteTraceResult) -> String {
+        if trace.failure != nil { return "exclamationmark.triangle.fill" }
+        return trace.reachedDestination ? "checkmark.circle.fill" : "arrow.triangle.branch"
+    }
+
+    private func routeStatusColor(_ trace: RouteTraceResult) -> Color {
+        if trace.failure != nil { return Theme.red }
+        return trace.reachedDestination ? Theme.green : Theme.cyan
+    }
+
+    private func isLoopback(_ trace: RouteTraceResult) -> Bool {
+        let address = trace.resolvedAddress ?? trace.target
+        return address == "::1" || address.hasPrefix("127.")
     }
 
     private var placeholder: some View {

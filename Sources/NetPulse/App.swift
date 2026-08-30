@@ -470,6 +470,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     )
                 ]
             )
+            model.routeTrace = RouteTraceResult(
+                target: "www.apple.com",
+                resolvedAddress: "203.0.113.42",
+                hops: [
+                    RouteHop(index: 1, address: "192.168.50.1", latencyMs: 2.1, annotation: nil),
+                    RouteHop(index: 2, address: nil, latencyMs: nil, annotation: nil),
+                    RouteHop(index: 3, address: "198.51.100.14", latencyMs: 18.7, annotation: nil),
+                    RouteHop(index: 4, address: "198.51.100.29", latencyMs: 42.4, annotation: nil),
+                    RouteHop(index: 5, address: nil, latencyMs: nil, annotation: nil),
+                    RouteHop(index: 6, address: "192.0.2.80", latencyMs: 87.2, annotation: nil),
+                    RouteHop(index: 7, address: "192.0.2.91", latencyMs: 109.8, annotation: nil),
+                    RouteHop(index: 8, address: "203.0.113.42", latencyMs: 112.6, annotation: nil),
+                ],
+                reachedDestination: true,
+                duration: 5.8
+            )
         }
         let host = NSHostingView(rootView: ContentView(initialTab: tab).environmentObject(model))
         host.setFrameSize(NSSize(width: 1180, height: 760))
@@ -571,7 +587,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 可选：端到端诊断 + 测速
         if CommandLine.arguments.contains("--with-diagnosis") {
-            await coordinator.runDiagnosis(url: "https://www.apple.com")
+            async let diagnosis: Void = coordinator.runDiagnosis(url: "https://www.apple.com")
+            async let route: Void = coordinator.runRouteTrace(target: "https://www.apple.com")
+            _ = await (diagnosis, route)
         }
         if CommandLine.arguments.contains("--with-speed") {
             await coordinator.runSpeedTest()
@@ -624,6 +642,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     lines.append("  [\(v.severity.label)] \(v.title)")
                 }
             }
+        }
+        if let route = model.routeTrace {
+            lines.append("=== 路径探测 ===")
+            lines.append("target=\(route.target) method=\(route.method.rawValue) hops=\(route.hops.count) responding=\(route.hops.filter(\.responded).count) reached=\(route.reachedDestination)")
         }
         if model.lastSpeed.measuredAt != nil {
             lines.append("=== 测速 ===")

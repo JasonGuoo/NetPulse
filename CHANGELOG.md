@@ -4,6 +4,10 @@ This file records user-visible changes to NetPulse.
 
 ## [Unreleased]
 
+### Added
+
+- Added on-demand hop-by-hop route tracing to website diagnosis, with bounded probes, silent-hop handling, destination status, and an active-VPN notice.
+
 ### Changed
 
 - Reorganized the README into separate sections for end users and developers.

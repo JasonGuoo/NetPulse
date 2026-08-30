@@ -10,7 +10,7 @@ NetPulse reads the following information while it is running:
 - Local IP addresses, subnet, gateway, active DNS servers, proxy configuration, and VPN or tunnel state
 - Process names, process IDs, local and remote endpoints, listening ports, byte counts, and transfer rates visible to the current user
 - Gateway, DNS, and public-target latency, packet loss, jitter, and system-wide TCP retransmission counts
-- URL timing and response metadata for a website diagnosis started by the user
+- URL timing, response metadata, and responding route-hop addresses for a website diagnosis started by the user
 
 These measurements are kept in process memory and are discarded when NetPulse quits.
 
@@ -42,12 +42,13 @@ Those providers receive the public IP address and the standard metadata carried 
 
 - A speed test downloads data from `https://speed.cloudflare.com`. A normal run uses a 3 MB warm-up and a 5–25 MB measurement. A failed measurement can retry with a smaller transfer.
 - A website diagnosis requests the URL entered by the user with an ephemeral URL session. It also queries the system resolver, `1.1.1.1`, and `8.8.8.8` for the target hostname.
+- The same action starts one bounded UDP traceroute toward that hostname. It sends one probe per hop, stops after the destination or 20 hops, and waits at most one second for each hop. It does not perform reverse-DNS lookups for intermediate addresses.
 
 NetPulse measures response metadata and timing. It does not save the downloaded page body.
 
 ## Permissions
 
-NetPulse runs as the current user. It does not request administrator access, install a privileged helper, capture packets, or change network settings. macOS may restrict SSID, nearby-network, or process information; NetPulse leaves unavailable fields empty or marks them as restricted.
+NetPulse runs as the current user. It does not request administrator access, install a privileged helper, capture packets, or change network settings. Route tracing uses the `traceroute` tool supplied by macOS. macOS may restrict SSID, nearby-network, or process information; NetPulse leaves unavailable fields empty or marks them as restricted.
 
 ## Sharing diagnostics
 

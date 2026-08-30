@@ -31,6 +31,8 @@ final class AppModel: ObservableObject {
     @Published var lastTiming: HttpTimingResult?
     @Published var diagnosing = false
     @Published var dnsResults: [DnsResult] = []
+    @Published var routeTrace: RouteTraceResult?
+    @Published var tracingRoute = false
 
     @Published var running = false
     @Published var tcpRetransPerMin: Double = 0   // TCP 重传包/分钟（系统级）

@@ -119,4 +119,16 @@ final class CoreCoordinator {
             model.dnsResults = dns
         }
     }
+
+    func runRouteTrace(target rawTarget: String) async {
+        await MainActor.run {
+            model.tracingRoute = true
+            model.routeTrace = nil
+        }
+        let result = await RouteTracer.trace(rawTarget: rawTarget)
+        await MainActor.run {
+            model.routeTrace = result
+            model.tracingRoute = false
+        }
+    }
 }

@@ -9,14 +9,15 @@ NetPulse is a single Swift Package Manager executable that builds a native Swift
 | `App.swift` | App lifecycle, window and menu bar setup, icon generation, and development self-tests |
 | `AppPreferences.swift` | Persistent application preferences and menu bar visibility notifications |
 | `AppModel.swift` | Observable state shared by collectors, diagnostics, and views |
-| `Models.swift` | Value types for Wi-Fi, connections, traffic, ping, DNS, HTTP timing, speed, and verdicts |
-| `Core/CoreCoordinator.swift` | Starts and stops collectors, coordinates manual refresh, speed tests, and URL diagnosis |
+| `Models.swift` | Value types for Wi-Fi, connections, traffic, ping, DNS, HTTP timing, route hops, speed, and verdicts |
+| `Core/CoreCoordinator.swift` | Starts and stops collectors, coordinates manual refresh, speed tests, URL diagnosis, and route tracing |
 | `Core/WifiInfoCollector.swift` | CoreWLAN and `system_profiler` Wi-Fi collection |
 | `Core/NetOverviewCollector.swift` | Gateway, DNS, IP, proxy, VPN, and public egress collection |
 | `Core/ConnectionMonitor.swift` | `lsof`, `nettop`, and `netstat` sampling and parsing |
 | `Core/PingMonitor.swift` | Latency, loss, and jitter samples for the active targets |
 | `Core/DnsBench.swift` | System, Cloudflare, and Google resolver comparison |
 | `Core/HttpTiming.swift` | URLSession task-metric breakdown for DNS, TCP, TLS, first byte, and download |
+| `Core/RouteTracer.swift` | Bounded macOS traceroute execution and hop-output parsing |
 | `Core/SpeedTest.swift` | User-triggered Cloudflare download measurement |
 | `Core/Diagnoser.swift` | Rule-based health and root-cause verdicts |
 | `L10n.swift` | Runtime localization tables and language preference |
@@ -31,7 +32,7 @@ NetPulse is a single Swift Package Manager executable that builds a native Swift
 macOS frameworks and commands       User actions
               |                         |
               v                         v
-        Core collectors     SpeedTest / DnsBench / HttpTiming
+        Core collectors     SpeedTest / DnsBench / HttpTiming / RouteTracer
               |                         |
               +------------+------------+
                            v
@@ -60,7 +61,7 @@ Collectors parse system output into value types before updating `AppModel`. View
 | Overview verdicts | 5 seconds after initial data is available |
 | Menu bar snapshot | 30 seconds and whenever the panel opens |
 
-Speed tests and website diagnostics run only after a user action.
+Speed tests and website diagnostics run only after a user action. A route trace is part of a website diagnosis and runs concurrently with HTTP and DNS measurements. It is limited to 20 hops, one UDP probe per hop, and a one-second response wait per hop.
 
 ## Concurrency and lifecycle
 
@@ -76,9 +77,9 @@ The score is intentionally conservative when one part of the path is clearly deg
 
 ## Testing
 
-`Tests/NetPulseTests` covers parsers, channel planning, formatting, URL normalization, HTTP metric construction, IP-provider matching, and diagnostic rules. Parser fixtures use synthetic or documentation-only addresses so test output can be shared safely.
+`Tests/NetPulseTests` covers parsers, traceroute output, channel planning, formatting, URL normalization, HTTP metric construction, IP-provider matching, and diagnostic rules. Parser fixtures use synthetic or documentation-only addresses so test output can be shared safely.
 
-UI work can be checked with `--selftest-png`, `--selftest-menubar-png`, and `--selftest-settings-png`, which render deterministic sample data without requiring screen-recording permission. `--probe` exercises live collectors without opening the main window.
+UI work can be checked with `--selftest-png`, `--selftest-menubar-png`, and `--selftest-settings-png`, which render deterministic sample data without requiring screen-recording permission. The diagnose-tab self-test includes a synthetic multi-hop path. `--probe` exercises live collectors without opening the main window.
 
 ## Packaging
 
